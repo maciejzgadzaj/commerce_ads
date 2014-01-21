@@ -19,13 +19,6 @@ function commerce_ads_configure_form($form, &$form_state) {
     '#default_value' => isset($commerce_ads_api['shopid']) ? $commerce_ads_api['shopid'] : '',
     '#required' => TRUE,
   );
-  // API key.
-  $form['commerce_ads_ws']['api_url'] = array(
-    '#type' => 'textfield',
-    '#title' => t('The base url for the api'),
-    '#default_value' => isset($commerce_ads_api['api_url']) ? $commerce_ads_api['api_url'] : '',
-    '#required' => TRUE,
-  );
   // Mode
   $form['commerce_ads_ws_mode'] = array(
     '#type' => 'radios',
