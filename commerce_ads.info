@@ -1,0 +1,4 @@
+name = Commerce ADS
+description = Handle ADS shipping service.
+core = 7.x
+configure = admin/commerce/config/commerce_ads
