@@ -1,2 +1,25 @@
 <?php
 
+/**
+ * Implements hook_menu().
+ */
+function commerce_ads_menu() {
+  $items = array();
+  $items['admin/commerce/config/commerce_ads'] = array(
+    'title' => 'ADS',
+    'description' => 'Manage ADS Settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_ads_configure_form'),
+    'access arguments' => array('administer ads'),
+    'file' => 'includes/commerce_ads.admin.inc',
+  );
+
+  $items['admin/commerce/config/commerce_ads/configure'] = array(
+    'title' => 'Configure',
+    'description' => 'Manage your ADS Account feeds',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  return $items;
+}
