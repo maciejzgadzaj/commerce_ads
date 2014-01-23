@@ -4,8 +4,7 @@
  * Configuration form to store ads settings.
  */
 function commerce_ads_configure_form($form, &$form_state) {
-  $commerce_ads_api = variable_get('commerce_ads_ws', array());
-
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   $form['commerce_ads_ws'] = array(
     '#tree' => TRUE,
     '#type' => 'fieldset',
@@ -16,11 +15,11 @@ function commerce_ads_configure_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Shop id'),
     '#description' => t('The unique identifier of the shop'),
-    '#default_value' => isset($commerce_ads_api['shopid']) ? $commerce_ads_api['shopid'] : '',
+    '#default_value' => isset($commerce_ads_ws['shopid']) ? $commerce_ads_ws['shopid'] : '',
     '#required' => TRUE,
   );
   // Mode
-  $form['commerce_ads_ws_mode'] = array(
+  $form['commerce_ads_ws']['commerce_ads_ws_mode'] = array(
     '#type' => 'radios',
     '#title' => t('Mode'),
     '#options' => array(
@@ -29,11 +28,12 @@ function commerce_ads_configure_form($form, &$form_state) {
     ),
     '#default_value' => variable_get('commerce_ads_ws_mode', 'test'),
   );
-  $form['commerce_ads_ws_mode'] = array(
+  $form['help'] = array(
     '#type' => 'markup',
     '#value' => t("If you don't have an ADS account, then please refer to ..."),
   );
   $form['#validate'] = array('commerce_ads_configure_form_validate');
+
   return system_settings_form($form);
 }
 
@@ -42,4 +42,94 @@ function commerce_ads_configure_form_validate(&$form, &$form_state) {
   if (FALSE) {
     form_set_error('commerce_ads', t('The ADS webservice is not reachable with these credential. Please retry or call your ADS contact.'));
   }
+}
+
+function commerce_ads_product_configure_form($form, &$form_state) {
+  $form = array();
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+
+  // Product types.
+  $form['product_types'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Product types'),
+    '#description' => t('You have to map which field of your Drupal installation corresponds to the ads field'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $types = array_keys(commerce_product_types());
+  $form['product_types']['types'] = array(
+    '#type' => 'select',
+    '#multiple' => TRUE,
+    '#title' => t('Product types'),
+    '#options' => array_combine($types, $types),
+    '#description' => t('Select the product types which will be synchronize with ADS.'),
+  );
+
+  // Product mapping.
+  $form['product_fields_mapping'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Product mapping'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  if (!empty($commerce_ads_ws['product_types'])) {
+    $fields = commerce_ads_get_all_product_fields($commerce_ads_ws['product_types']);
+    foreach ($commerce_ads_ws['ads_product_fields'] as $ads_field_name => $info) {
+      $form['product_fields_mapping'][$ads_field_name] = array(
+        '#title' => t($ads_field_name),
+        '#type' => 'select',
+        '#multiple' => TRUE,
+        '#options' => $fields,
+        '#description' => $info['description'],
+        '#required' => $info['required'],
+        '#default_value' => $commerce_ads_ws['product_fields_mapping'][$ads_field_name],
+      );
+    }
+  }
+  else {
+    $form['product_fields_mapping'] = array(
+      '#type' => 'markup',
+      '#value' => t("You first have to choose which product types will be synchronize with ADS"),
+    );
+  }
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+
+  return $form;
+}
+
+function commerce_ads_product_configure_form_submit($form, &$form_state) {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  if (!empty($form_state['values']['product_types']['types'])) {
+    $commerce_ads_ws['product_types'] = $form_state['values']['product_types']['types'];
+  }
+  if (!empty($form_state['values']['product_fields_mapping'])) {
+    $commerce_ads_ws['product_fields_mapping'] = $form_state['values']['product_fields_mapping'];
+  }
+  variable_set('commerce_ads_ws', $commerce_ads_ws);
+}
+
+function commerce_ads_get_all_product_fields($bundles) {
+  $fields = array();
+  foreach (field_read_instances(array('entity_type' => 'commerce_product')) as $field) {
+    if (in_array($field['bundle'], $bundles)) {
+      $fields[$field['field_name']] = $field['label'] . ' - (' . $field['field_name'] . ')';
+    }
+  }
+  return $fields;
+}
+
+function commerce_ads_order_configure_form($form, &$form_state) {
+  $form = array();
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
 }

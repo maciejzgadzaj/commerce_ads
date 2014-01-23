@@ -13,12 +13,34 @@ function commerce_ads_menu() {
     'access arguments' => array('administer ads'),
     'file' => 'includes/commerce_ads.admin.inc',
   );
-
+  // Product settings form.
   $items['admin/commerce/config/commerce_ads/configure'] = array(
     'title' => 'Configure',
     'description' => 'Manage your ADS Account feeds',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10,
+  );
+  // Product settings form.
+  $items['admin/commerce/config/commerce_ads/products'] = array(
+    'title' => 'Products',
+    'description' => 'Product settings.',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 30,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_ads_product_configure_form'),
+    'access arguments' => array('administer ads'),
+    'file' => 'includes/commerce_ads.admin.inc',
+  );
+  // Product settings form.
+  $items['admin/commerce/config/commerce_ads/orders'] = array(
+    'title' => 'Orders',
+    'description' => 'Order settings.',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 30,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_ads_order_configure_form'),
+    'access arguments' => array('administer ads'),
+    'file' => 'includes/commerce_ads.admin.inc',
   );
 
   return $items;
