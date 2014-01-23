@@ -53,7 +53,6 @@ function commerce_ads_product_configure_form($form, &$form_state) {
     '#tree' => TRUE,
     '#type' => 'fieldset',
     '#title' => t('Product types'),
-    '#description' => t('You have to map which field of your Drupal installation corresponds to the ads field'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
@@ -126,10 +125,101 @@ function commerce_ads_get_all_product_fields($bundles) {
 
 function commerce_ads_order_configure_form($form, &$form_state) {
   $form = array();
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  // Order status.
+  $form['ads_order_status'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Order status for validation'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $statuses = array();
+  foreach (commerce_order_statuses() as $status) {
+    $statuses[$status['name']] = $status['title'];
+  }
+  $form['ads_order_status']['status'] = array(
+    '#type' => 'select',
+    '#title' => t('Order validation status'),
+    '#options' => $statuses,
+    '#description' => t('Select the order status for which one the order will be sent to ADS.'),
+  );
+
+  // Order mapping.
+  $form['ads_order_mapping'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Order mapping'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#prefix' => '<div id="ads-order-mapping">',
+    '#suffix' => '</div>',
+  );
+  $form['ads_order_mapping']['customer_profile_type'] = array(
+    '#type' => 'select',
+    '#title' => t('Customer profile to use'),
+    '#options' => commerce_customer_profile_type_options_list(),
+    '#description' => t('Which customer profile store the shipping address of your customer?'),
+    '#ajax' => array(
+      'callback' => 'commerce_ads_ajax_get_profile_fields',
+      'wrapper' => 'ads-order-mapping',
+    ),
+    '#default_value' => $commerce_ads_ws['customer_profile_type'],
+  );
+
+  if (!empty($form_state['values']['ads_order_mapping']['customer_profile_type'])) {
+    $customer_profile_type = $form_state['values']['ads_order_mapping']['customer_profile_type'];
+  }
+  elseif (!empty($commerce_ads_ws['customer_profile_type'])) {
+    $customer_profile_type = $commerce_ads_ws['customer_profile_type'];
+  }
+  if (!empty($customer_profile_type)) {
+    $customer_profile_fields = commerce_ads_get_all_customer_profile_fields($customer_profile_type);
+    foreach($commerce_ads_ws['ads_order_fields'] as $ads_field_name => $info) {
+      $form['ads_order_mapping']['fields'][$ads_field_name] = array(
+        '#title' => t($ads_field_name),
+        '#type' => 'select',
+        '#multiple' => TRUE,
+        '#options' => $customer_profile_fields,
+        '#description' => $info['description'],
+        '#required' => $info['required'],
+        '#default_value' => !empty($commerce_ads_ws['ads_order_mapping'][$ads_field_name]) ? $commerce_ads_ws['ads_order_mapping'][$ads_field_name] : '',
+      );
+    }
+  }
 
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Submit'),
   );
   return $form;
+}
+
+function commerce_ads_order_configure_form_submit($form, &$form_state) {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  if (!empty($form_state['values']['ads_order_status']['status'])) {
+    $commerce_ads_ws['ads_order_status'] = $form_state['values']['ads_order_status']['status'];
+  }
+  if (!empty($form_state['values']['ads_order_mapping']['customer_profile_type'])) {
+    $commerce_ads_ws['customer_profile_type'] = $form_state['values']['ads_order_mapping']['customer_profile_type'];
+  }
+  if (!empty($form_state['values']['ads_order_mapping']['fields'])) {
+    $commerce_ads_ws['ads_order_mapping'] = $form_state['values']['ads_order_mapping']['fields'];
+  }
+  variable_set('commerce_ads_ws', $commerce_ads_ws);
+}
+
+function commerce_ads_ajax_get_profile_fields($form, $form_state) {
+  return $form['ads_order_mapping'];
+}
+
+function commerce_ads_get_all_customer_profile_fields($customer_profile_type) {
+  $fields = array();
+  $customer_profile_fields = field_info_instances('commerce_customer_profile', $customer_profile_type);
+  foreach($customer_profile_fields as $field) {
+    if ($field['widget']['module'] !== "addressfield") {
+      $fields[$field['field_name']] = $field['label'] . ' - (' . $field['field_name'] . ')';
+    }
+  }
+  return $fields;
 }
