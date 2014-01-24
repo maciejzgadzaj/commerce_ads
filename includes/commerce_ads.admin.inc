@@ -10,7 +10,7 @@ function commerce_ads_configure_form($form, &$form_state) {
     '#type' => 'fieldset',
     '#title' => t('My ADS account'),
   );
-  // Login.
+  // Shopid.
   $form['commerce_ads_ws']['commerce_ads_shopid'] = array(
     '#type' => 'textfield',
     '#title' => t('Shop id'),
@@ -44,6 +44,9 @@ function commerce_ads_configure_form_validate(&$form, &$form_state) {
   }
 }
 
+/**
+ * Configure product for the ads solution.
+ */
 function commerce_ads_product_configure_form($form, &$form_state) {
   $form = array();
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
@@ -65,7 +68,7 @@ function commerce_ads_product_configure_form($form, &$form_state) {
     '#description' => t('Select the product types which will be synchronize with ADS.'),
   );
 
-  // Product mapping.
+  // Product field mapping.
   $form['ads_product_mapping'] = array(
     '#tree' => TRUE,
     '#type' => 'fieldset',
@@ -113,6 +116,14 @@ function commerce_ads_product_configure_form_submit($form, &$form_state) {
   variable_set('commerce_ads_ws', $commerce_ads_ws);
 }
 
+/**
+ * This function extract all field machine name from a product bundle.
+ *
+ * @param string $bundles
+ *   The machine name of the bundle we want to extract fields from.
+ * @return array
+ *   An array of field keyed by machine name.
+ */
 function commerce_ads_get_all_product_fields($bundles) {
   $fields = array();
   foreach (field_read_instances(array('entity_type' => 'commerce_product')) as $field) {
@@ -123,6 +134,9 @@ function commerce_ads_get_all_product_fields($bundles) {
   return $fields;
 }
 
+/**
+ * Configure order for the ads solution.
+ */
 function commerce_ads_order_configure_form($form, &$form_state) {
   $form = array();
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
@@ -209,6 +223,14 @@ function commerce_ads_ajax_get_profile_fields($form, $form_state) {
   return $form['ads_order_mapping'];
 }
 
+/**
+ * Get all customer profile fields.
+ *
+ * @param string $customer_profile_type
+ *   The customer profile type we want to extract all fields from.
+ * @return array
+ *   An array of field keyed by machine name.
+ */
 function commerce_ads_get_all_customer_profile_fields($customer_profile_type) {
   $fields = array();
   $customer_profile_fields = field_info_instances('commerce_customer_profile', $customer_profile_type);
@@ -262,6 +284,12 @@ function commerce_ads_shipping_configure_form_submit($form, &$form_state) {
   variable_set('commerce_ads_ws', $commerce_ads_ws);
 }
 
+/**
+ * This function creates an option list with order statuses.
+ *
+ * @return array
+ *   An array of existing order statuses keyed by machine name.
+ */
 function commerce_ads_get_order_statuses_options() {
   $statuses = array();
   foreach (commerce_order_statuses() as $status) {
