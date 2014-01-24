@@ -1,0 +1,147 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function commerce_ads_install() {
+  $ads_fields = array(
+    'ads_product_fields' => array(
+      'Label' => array(
+        'description' => t('The label may will appear on the delivery slid (Max: 30 chars)'),
+        'required' => FALSE,
+      ),
+      'Picture' => array(
+        'values' => t('An URI of the image of the specified picture. (Max: 250 chars'),
+        'description' => t('The picture of the specified product.'),
+        'required' => FALSE,
+      ),
+      'Size' => array(
+        'values' => t('-Height (in millimeters)
+          -Length (in millimeters)
+          -Width (in millimeters)
+          -Volume (in millimeters3
+          -Weight (in grams)'),
+        'description' => t('Dimensions of the product.'),
+        'required' => FALSE,
+      ),
+      'TranslationEntity' => array(
+        'values' => t('-Label: Description of the product (Max : 100 chars)
+          -Language: ISO code of the language (Max : 2 chars)'),
+        'description' => t('A description of the product.'),
+        'required' => TRUE,
+      ),
+      'EanEntity' => array(
+        'values' => t('-EAN13 (Max : 32 chars)'),
+        'description' => t('The EAN13 code of the product.'),
+        'required' => FALSE,
+      ),
+    ),
+    'ads_order_fields' => array(
+      'InvoiceUrl' => array(
+        'values' => t('Any URI. (Max : 100 chars)'),
+        'description' => t('The invoice URI'),
+        'required' => FALSE,
+      ),
+      'Gift' => array(
+        'values' => t('True/False'),
+        'description' => t('Determine if the order is a gift'),
+        'required' => FALSE,
+      ),
+      'Bloked' => array(
+        'values' => t('True/False'),
+        'description' => t('Determine if the order is bloked'),
+        'required' => FALSE,
+      ),
+      'Message' => array(
+        'values' => t('A short text description (Max: 150 chars)'),
+        'description' => t('This message would be appear on the delivery slip.'),
+        'required' => FALSE,
+      ),
+      'DeliverymanId' => array(
+        'description' => t('The unique identifier of the carrier'),
+        'required' => TRUE,
+      ),
+      'FirstName' => array(
+        'description' => t('The first name of the receiver (Max: 40 chars)'),
+        'required' => TRUE,
+      ),
+      'LastName' => array(
+        'description' => t('The last name of the receiver (Max: 40 chars)'),
+        'required' => TRUE,
+      ),
+      'CompanyName' => array(
+        'description' => t('The company name of the receiver (Max: 30 chars)'),
+        'required' => FALSE,
+      ),
+      'AddressLine1' => array(
+        'description' => t('Address field 1 for the delivery (Max: 50 chars)'),
+        'required' => TRUE,
+      ),
+      'AddressLine2' => array(
+        'description' => t('Address field 2 for the delivery (Max: 50 chars)'),
+        'required' => FALSE,
+      ),
+      'AddressLine3' => array(
+        'description' => t('Address field 3 for the delivery (Max: 50 chars)'),
+        'required' => FALSE,
+      ),
+      'PostalCode' => array(
+        'description' => t('Zip code for the delivery (Max: 10 chars)'),
+        'required' => TRUE,
+      ),
+      'City' => array(
+        'description' => t('City for the delivery (Max: 40 chars)'),
+        'required' => TRUE,
+      ),
+      'State' => array(
+        'description' => t('State for the delivery (Max : 40 chars)'),
+        'required' => FALSE,
+      ),
+      'Country' => array(
+        'description' => t('ISO Code of the Country for the delivery'),
+        'required' => TRUE,
+      ),
+      'MobilePhone' => array(
+        'description' => t('Mobile phone number of the receiver (Max: 40 chars)'),
+        'required' => FALSE,
+      ),
+      'Phone' => array(
+        'description' => t('Phone number of the receiver (Max : 40 chars)'),
+        'required' => TRUE,
+      ),
+      'Comment' => array(
+        'description' => t('A comment about receiver’s address. (Max: 40 chars)'),
+        'required' => FALSE,
+      ),
+      'Floor' => array(
+        'description' => t('Floor of the receiver information (Max : 40 chars)'),
+        'required' => FALSE,
+      ),
+      'Apartment' => array(
+        'description' => t('Apartment of the receiver information (Max: 40 chars)'),
+        'required' => FALSE,
+      ),
+      'Building' => array(
+        'description' => t('Building of the receiver information (Max : 40 chars)'),
+        'required' => FALSE,
+      ),
+      'Digicode' => array(
+        'description' => t('Door access code (Max : 40 chars)'),
+        'required' => FALSE,
+      ),
+      'Email' => array(
+        'description' => t('Email address of the receiver (Max : 100 chars)'),
+        'required' => TRUE,
+      ),
+      'PickupCode' => array(
+        'description' => t('Code of the relay point if carrier need it (Max: 10 chars)'),
+        'required' => FALSE,
+      ),
+      'PickupCountry' => array(
+        'description' => t('Code of the relay point country if carrier need it (Max: 2 chars)'),
+        'required' => FALSE,
+      ),
+    ),
+  );
+  variable_set('commerce_ads_ws', $ads_fields);
+}

@@ -11,7 +11,7 @@ function commerce_ads_configure_form($form, &$form_state) {
     '#title' => t('My ADS account'),
   );
   // Login.
-  $form['commerce_ads_ws']['shopid'] = array(
+  $form['commerce_ads_ws']['commerce_ads_shopid'] = array(
     '#type' => 'textfield',
     '#title' => t('Shop id'),
     '#description' => t('The unique identifier of the shop'),
@@ -49,7 +49,7 @@ function commerce_ads_product_configure_form($form, &$form_state) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
 
   // Product types.
-  $form['product_types'] = array(
+  $form['ads_product_types'] = array(
     '#tree' => TRUE,
     '#type' => 'fieldset',
     '#title' => t('Product types'),
@@ -57,7 +57,7 @@ function commerce_ads_product_configure_form($form, &$form_state) {
     '#collapsed' => FALSE,
   );
   $types = array_keys(commerce_product_types());
-  $form['product_types']['types'] = array(
+  $form['ads_product_types']['types'] = array(
     '#type' => 'select',
     '#multiple' => TRUE,
     '#title' => t('Product types'),
@@ -66,29 +66,29 @@ function commerce_ads_product_configure_form($form, &$form_state) {
   );
 
   // Product mapping.
-  $form['product_fields_mapping'] = array(
+  $form['ads_product_mapping'] = array(
     '#tree' => TRUE,
     '#type' => 'fieldset',
     '#title' => t('Product mapping'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
-  if (!empty($commerce_ads_ws['product_types'])) {
-    $fields = commerce_ads_get_all_product_fields($commerce_ads_ws['product_types']);
-    foreach ($commerce_ads_ws['ads_product_fields'] as $ads_field_name => $info) {
-      $form['product_fields_mapping'][$ads_field_name] = array(
+  if (!empty($commerce_ads_ws['ads_product_types'])) {
+    $fields = commerce_ads_get_all_product_fields($commerce_ads_ws['ads_product_types']);
+    foreach ($commerce_ads_ws['ads_product_mapping'] as $ads_field_name => $info) {
+      $form['ads_product_mapping'][$ads_field_name] = array(
         '#title' => t($ads_field_name),
         '#type' => 'select',
         '#multiple' => TRUE,
         '#options' => $fields,
         '#description' => $info['description'],
         '#required' => $info['required'],
-        '#default_value' => $commerce_ads_ws['product_fields_mapping'][$ads_field_name],
+        '#default_value' => $commerce_ads_ws['ads_product_mapping'][$ads_field_name],
       );
     }
   }
   else {
-    $form['product_fields_mapping'] = array(
+    $form['ads_product_mapping'] = array(
       '#type' => 'markup',
       '#value' => t("You first have to choose which product types will be synchronize with ADS"),
     );
@@ -104,11 +104,11 @@ function commerce_ads_product_configure_form($form, &$form_state) {
 
 function commerce_ads_product_configure_form_submit($form, &$form_state) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  if (!empty($form_state['values']['product_types']['types'])) {
-    $commerce_ads_ws['product_types'] = $form_state['values']['product_types']['types'];
+  if (!empty($form_state['values']['ads_product_types']['types'])) {
+    $commerce_ads_ws['ads_product_types'] = $form_state['values']['ads_product_types']['types'];
   }
-  if (!empty($form_state['values']['product_fields_mapping'])) {
-    $commerce_ads_ws['product_fields_mapping'] = $form_state['values']['product_fields_mapping'];
+  if (!empty($form_state['values']['ads_product_mapping'])) {
+    $commerce_ads_ws['ads_product_mapping'] = $form_state['values']['ads_product_mapping'];
   }
   variable_set('commerce_ads_ws', $commerce_ads_ws);
 }
@@ -134,14 +134,10 @@ function commerce_ads_order_configure_form($form, &$form_state) {
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
-  $statuses = array();
-  foreach (commerce_order_statuses() as $status) {
-    $statuses[$status['name']] = $status['title'];
-  }
   $form['ads_order_status']['status'] = array(
     '#type' => 'select',
     '#title' => t('Order validation status'),
-    '#options' => $statuses,
+    '#options' => commerce_ads_get_order_statuses_options(),
     '#description' => t('Select the order status for which one the order will be sent to ADS.'),
   );
 
@@ -155,7 +151,7 @@ function commerce_ads_order_configure_form($form, &$form_state) {
     '#prefix' => '<div id="ads-order-mapping">',
     '#suffix' => '</div>',
   );
-  $form['ads_order_mapping']['customer_profile_type'] = array(
+  $form['ads_order_mapping']['ads_customer_profile_type'] = array(
     '#type' => 'select',
     '#title' => t('Customer profile to use'),
     '#options' => commerce_customer_profile_type_options_list(),
@@ -164,14 +160,14 @@ function commerce_ads_order_configure_form($form, &$form_state) {
       'callback' => 'commerce_ads_ajax_get_profile_fields',
       'wrapper' => 'ads-order-mapping',
     ),
-    '#default_value' => $commerce_ads_ws['customer_profile_type'],
+    '#default_value' => $commerce_ads_ws['ads_customer_profile_type'],
   );
 
-  if (!empty($form_state['values']['ads_order_mapping']['customer_profile_type'])) {
-    $customer_profile_type = $form_state['values']['ads_order_mapping']['customer_profile_type'];
+  if (!empty($form_state['values']['ads_order_mapping']['ads_customer_profile_type'])) {
+    $customer_profile_type = $form_state['values']['ads_order_mapping']['ads_customer_profile_type'];
   }
-  elseif (!empty($commerce_ads_ws['customer_profile_type'])) {
-    $customer_profile_type = $commerce_ads_ws['customer_profile_type'];
+  elseif (!empty($commerce_ads_ws['ads_customer_profile_type'])) {
+    $customer_profile_type = $commerce_ads_ws['ads_customer_profile_type'];
   }
   if (!empty($customer_profile_type)) {
     $customer_profile_fields = commerce_ads_get_all_customer_profile_fields($customer_profile_type);
@@ -200,8 +196,8 @@ function commerce_ads_order_configure_form_submit($form, &$form_state) {
   if (!empty($form_state['values']['ads_order_status']['status'])) {
     $commerce_ads_ws['ads_order_status'] = $form_state['values']['ads_order_status']['status'];
   }
-  if (!empty($form_state['values']['ads_order_mapping']['customer_profile_type'])) {
-    $commerce_ads_ws['customer_profile_type'] = $form_state['values']['ads_order_mapping']['customer_profile_type'];
+  if (!empty($form_state['values']['ads_order_mapping']['ads_customer_profile_type'])) {
+    $commerce_ads_ws['ads_customer_profile_type'] = $form_state['values']['ads_order_mapping']['ads_customer_profile_type'];
   }
   if (!empty($form_state['values']['ads_order_mapping']['fields'])) {
     $commerce_ads_ws['ads_order_mapping'] = $form_state['values']['ads_order_mapping']['fields'];
@@ -221,5 +217,55 @@ function commerce_ads_get_all_customer_profile_fields($customer_profile_type) {
       $fields[$field['field_name']] = $field['label'] . ' - (' . $field['field_name'] . ')';
     }
   }
+  foreach (addressfield_data_property_info() as $address_field_name => $address_field_info) {
+    $fields[$address_field_name] = $address_field_info['label'] . ' - (' . $address_field_name . ')';
+  }
   return $fields;
+}
+
+/**
+ * Configuration form to store shipping settings.
+ */
+function commerce_ads_shipping_configure_form($form, &$form_state) {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  $form['ads_shipping_services'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Shipping services'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  foreach (commerce_shipping_services() as $services) {
+    $form['ads_shipping_services'][$services['name']] = array(
+      '#type' => 'textfield',
+      '#title' => t($services['display_title']),
+      '#size' => 20,
+      '#default_value' => !empty($commerce_ads_ws['ads_shipping_services'][$services['name']]) ? $commerce_ads_ws['ads_shipping_services'][$services['name']] : '',
+    );
+  }
+
+  $form['ads_shipping_services']['help'] = array(
+    '#markup' => t('Enter ADS shipping codes for each services. Contact ADS to get these codes.'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
+}
+
+function commerce_ads_shipping_configure_form_submit($form, &$form_state) {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  if (!empty($form_state['values']['ads_shipping_services'])) {
+    $commerce_ads_ws['ads_shipping_services'] = $form_state['values']['ads_shipping_services'];
+  }
+  variable_set('commerce_ads_ws', $commerce_ads_ws);
+}
+
+function commerce_ads_get_order_statuses_options() {
+  $statuses = array();
+  foreach (commerce_order_statuses() as $status) {
+    $statuses[$status['name']] = $status['title'];
+  }
+  return $statuses;
 }
