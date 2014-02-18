@@ -11,37 +11,73 @@ function commerce_ads_configure_form($form, &$form_state) {
     '#title' => t('My ADS account'),
   );
   // Shopid.
-  $form['commerce_ads_ws']['commerce_ads_shopid'] = array(
+  $form['commerce_ads_ws']['ads_shopid'] = array(
     '#type' => 'textfield',
     '#title' => t('Shop id'),
     '#description' => t('The unique identifier of the shop'),
-    '#default_value' => isset($commerce_ads_ws['shopid']) ? $commerce_ads_ws['shopid'] : '',
+    '#default_value' => isset($commerce_ads_ws['ads_shopid']) ? $commerce_ads_ws['ads_shopid'] : '',
+    '#required' => TRUE,
+  );
+  // Base url.
+  $form['commerce_ads_ws']['ads_base_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Base url'),
+    '#description' => t('The base url to make call to the ADS Webservice. With trailing slash'),
+    '#default_value' => isset($commerce_ads_ws['ads_base_url']) ? $commerce_ads_ws['ads_base_url'] : '',
+    '#required' => TRUE,
+  );
+  // Authorization key.
+  $form['commerce_ads_ws']['ads_authorization_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Authorization key'),
+    '#description' => t('The authorization key to include in webservice header calls'),
+    '#default_value' => isset($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
     '#required' => TRUE,
   );
   // Mode
-  $form['commerce_ads_ws']['commerce_ads_ws_mode'] = array(
+  $form['commerce_ads_ws']['ads_ws_mode'] = array(
     '#type' => 'radios',
     '#title' => t('Mode'),
     '#options' => array(
-      'test' => ('Test - allow you to test in real conditions on Priceminister sandboxes'),
+      'test' => ('Test - allow you to test in real conditions.'),
       'live' => ('Live - process real export import to a live account'),
     ),
-    '#default_value' => variable_get('commerce_ads_ws_mode', 'test'),
+   '#default_value' => isset($commerce_ads_ws['ads_ws_mode']) ? $commerce_ads_ws['ads_ws_mode'] : 'test',
   );
   $form['help'] = array(
     '#type' => 'markup',
     '#value' => t("If you don't have an ADS account, then please refer to ..."),
   );
   $form['#validate'] = array('commerce_ads_configure_form_validate');
-
-  return system_settings_form($form);
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
 }
 
 function commerce_ads_configure_form_validate(&$form, &$form_state) {
-  // Todo check that the ads webservice is reachable, otherwise display an error message.
-  if (FALSE) {
+  if (isset($form_state['values']['commerce_ads_ws']['ads_authorization_key']) && isset($form_state['values']['commerce_ads_ws']['ads_base_url']) && !commerce_ads_check_login_ws($form_state['values']['commerce_ads_ws']['ads_base_url'], $form_state['values']['commerce_ads_ws']['ads_authorization_key'])) {
     form_set_error('commerce_ads', t('The ADS webservice is not reachable with these credential. Please retry or call your ADS contact.'));
   }
+}
+
+function commerce_ads_configure_form_submit($form, &$form_state) {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  if (!empty($form_state['values']['commerce_ads_ws']['ads_shopid'])) {
+    $commerce_ads_ws['ads_shopid'] = $form_state['values']['commerce_ads_ws']['ads_shopid'];
+  }
+  if (!empty($form_state['values']['commerce_ads_ws']['ads_base_url'])) {
+    $commerce_ads_ws['ads_base_url'] = $form_state['values']['commerce_ads_ws']['ads_base_url'];
+  }
+  if (!empty($form_state['values']['commerce_ads_ws']['ads_authorization_key'])) {
+    $commerce_ads_ws['ads_authorization_key'] = $form_state['values']['commerce_ads_ws']['ads_authorization_key'];
+  }
+  if (!empty($form_state['values']['commerce_ads_ws']['ads_ws_mode'])) {
+    $commerce_ads_ws['ads_ws_mode'] = $form_state['values']['commerce_ads_ws']['ads_ws_mode'];
+  }
+  variable_set('commerce_ads_ws', $commerce_ads_ws);
+  drupal_set_message(t('Configuration saved'));
 }
 
 /**
@@ -50,7 +86,6 @@ function commerce_ads_configure_form_validate(&$form, &$form_state) {
 function commerce_ads_product_configure_form($form, &$form_state) {
   $form = array();
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-
   // Product types.
   $form['ads_product_types'] = array(
     '#tree' => TRUE,
@@ -65,7 +100,8 @@ function commerce_ads_product_configure_form($form, &$form_state) {
     '#multiple' => TRUE,
     '#title' => t('Product types'),
     '#options' => array_combine($types, $types),
-    '#description' => t('Select the product types which will be synchronize with ADS.'),
+    '#description' => t("Select the product types which will be synchronize with ADS. If an order doesn't contains one of this selected product type, it won't be sent to ADS"),
+    '#default_value' => !empty($commerce_ads_ws['ads_product_types']) ? $commerce_ads_ws['ads_product_types'] : '',
   );
 
   // Product field mapping.
@@ -78,15 +114,17 @@ function commerce_ads_product_configure_form($form, &$form_state) {
   );
   if (!empty($commerce_ads_ws['ads_product_types'])) {
     $fields = commerce_ads_get_all_product_fields($commerce_ads_ws['ads_product_types']);
-    foreach ($commerce_ads_ws['ads_product_mapping'] as $ads_field_name => $info) {
+    foreach ($commerce_ads_ws['ads_product_fields'] as $ads_field_name => $info) {
+      $description = !empty($info['description']) ? $info['description'] : '';
+      $values = !empty($info['values']) ? $info['values'] : '';
       $form['ads_product_mapping'][$ads_field_name] = array(
         '#title' => t($ads_field_name),
         '#type' => 'select',
         '#multiple' => TRUE,
         '#options' => $fields,
-        '#description' => $info['description'],
+        '#description' => $description . '|' . $values,
         '#required' => $info['required'],
-        '#default_value' => $commerce_ads_ws['ads_product_mapping'][$ads_field_name],
+        '#default_value' => !empty($commerce_ads_ws['ads_product_mapping'][$ads_field_name]) ? $commerce_ads_ws['ads_product_mapping'][$ads_field_name] : '',
       );
     }
   }
@@ -96,6 +134,38 @@ function commerce_ads_product_configure_form($form, &$form_state) {
       '#value' => t("You first have to choose which product types will be synchronize with ADS"),
     );
   }
+
+  // Product synchronization.
+  $form['ads_product_synchronization'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Synchronization'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['ads_product_synchronization']['ads_send_newly_created_product'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Send ADS the newly created/updated products'),
+    '#default_value' => array_key_exists('ads_send_newly_created_product', $commerce_ads_ws) ? $commerce_ads_ws['ads_send_newly_created_product'] : TRUE,
+  );
+  $form['ads_product_synchronization']['ads_product_send_frequency'] = array(
+    '#type' => 'select',
+    '#title' => t('Synchronization frequency'),
+    '#options' => array(
+      '' => t('Select a value'),
+      '300' => t('5 minutes'),
+      '600' => t('10 minutes'),
+      '1800' => t('30 minutes'),
+      '3600' => t('1 hour'),
+      '7200' => t('2 hours'),
+    ),
+    '#default_value' => !empty($commerce_ads_ws['ads_product_send_frequency']) ? $commerce_ads_ws['ads_product_send_frequency'] : '',
+  );
+  $form['ads_product_synchronization']['ads_send_product'] = array(
+    '#type' => 'submit',
+    '#value' => t('Send all products.'),
+    '#submit' => array('commerce_ads_send_all_products_batch_submit'),
+  );
 
   $form['submit'] = array(
     '#type' => 'submit',
@@ -107,13 +177,41 @@ function commerce_ads_product_configure_form($form, &$form_state) {
 
 function commerce_ads_product_configure_form_submit($form, &$form_state) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  if (!empty($form_state['values']['ads_product_types']['types'])) {
-    $commerce_ads_ws['ads_product_types'] = $form_state['values']['ads_product_types']['types'];
-  }
+  $commerce_ads_ws['ads_product_types'] = $form_state['values']['ads_product_types']['types'];
   if (!empty($form_state['values']['ads_product_mapping'])) {
     $commerce_ads_ws['ads_product_mapping'] = $form_state['values']['ads_product_mapping'];
   }
+  $commerce_ads_ws['ads_send_newly_created_product'] = $form_state['values']['ads_product_synchronization']['ads_send_newly_created_product'];
+  if (!empty($form_state['values']['ads_product_synchronization']['ads_product_send_frequency'])) {
+    $commerce_ads_ws['ads_product_send_frequency'] = $form_state['values']['ads_product_synchronization']['ads_product_send_frequency'];
+  }
   variable_set('commerce_ads_ws', $commerce_ads_ws);
+  drupal_set_message(t('Configuration saved'));
+}
+
+function theme_commerce_ads_product_configure_form($variables) {
+  $form = array();
+  $form['ads_product_types'] = array('#markup' => drupal_render($variables['form']['ads_product_types']));
+  $rows = array();
+  $header = array(t('Field'), t('Description'), t('Value'), t('Mapping'));
+  foreach (element_children($variables['form']['ads_product_mapping']) as $key) {
+    $info = explode('|', $variables['form']['ads_product_mapping'][$key]['#description']);
+    unset($variables['form']['ads_product_mapping'][$key]['#title']);
+    unset($variables['form']['ads_product_mapping'][$key]['#description']);
+    $rows[] = array(
+      $key,
+      !empty($info[0]) ? $info[0] : '',
+      !empty($info[1]) ? $info[1] : '',
+      drupal_render($variables['form']['ads_product_mapping'][$key]),
+    );
+  }
+  unset($variables['form']['ads_product_mapping']);
+  if (!empty($rows)) {
+    $form['ads_product_mapping'] = array('#markup' => theme('table', array('header' => $header, 'rows' => $rows)));
+  }
+  $form['ads_product_synchronization'] = array('#markup' => drupal_render($variables['form']['ads_product_synchronization']));
+  $form['submit'] = array('#markup' => drupal_render($variables['form']['submit']));
+  return drupal_render($form) . drupal_render_children($variables['form']);
 }
 
 /**
@@ -148,11 +246,19 @@ function commerce_ads_order_configure_form($form, &$form_state) {
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
+  $options = commerce_order_status_options_list();
+  if (!empty($commerce_ads_ws['ads_order_status'])) {
+    $default = $commerce_ads_ws['ads_order_status'];
+  }
+  else {
+    $default = 'completed';
+  }
   $form['ads_order_status']['status'] = array(
     '#type' => 'select',
     '#title' => t('Order validation status'),
-    '#options' => commerce_ads_get_order_statuses_options(),
+    '#options' => $options,
     '#description' => t('Select the order status for which one the order will be sent to ADS.'),
+    '#default_value' => $default,
   );
 
   // Order mapping.
@@ -168,13 +274,14 @@ function commerce_ads_order_configure_form($form, &$form_state) {
   $form['ads_order_mapping']['ads_customer_profile_type'] = array(
     '#type' => 'select',
     '#title' => t('Customer profile to use'),
-    '#options' => commerce_customer_profile_type_options_list(),
+    '#required' => TRUE,
+    '#options' => array('' => t('Select a customer profile')) + commerce_customer_profile_type_options_list(),
     '#description' => t('Which customer profile store the shipping address of your customer?'),
     '#ajax' => array(
       'callback' => 'commerce_ads_ajax_get_profile_fields',
       'wrapper' => 'ads-order-mapping',
     ),
-    '#default_value' => $commerce_ads_ws['ads_customer_profile_type'],
+    '#default_value' => !empty($commerce_ads_ws['ads_customer_profile_type']) ? $commerce_ads_ws['ads_customer_profile_type'] : '',
   );
 
   if (!empty($form_state['values']['ads_order_mapping']['ads_customer_profile_type'])) {
@@ -184,19 +291,90 @@ function commerce_ads_order_configure_form($form, &$form_state) {
     $customer_profile_type = $commerce_ads_ws['ads_customer_profile_type'];
   }
   if (!empty($customer_profile_type)) {
-    $customer_profile_fields = commerce_ads_get_all_customer_profile_fields($customer_profile_type);
-    foreach($commerce_ads_ws['ads_order_fields'] as $ads_field_name => $info) {
+    foreach($commerce_ads_ws['ads_order_fields']['customer_profile'] as $ads_field_name => $info) {
+      $description = !empty($info['description']) ? $info['description'] : '';
+      $values = !empty($info['values']) ? $info['values'] : '';
       $form['ads_order_mapping']['fields'][$ads_field_name] = array(
         '#title' => t($ads_field_name),
         '#type' => 'select',
         '#multiple' => TRUE,
-        '#options' => $customer_profile_fields,
-        '#description' => $info['description'],
+        '#options' => array_merge(commerce_ads_get_all_customer_profile_fields($customer_profile_type), commerce_ads_get_all_user_fields()),
+        '#description' => $description . '|' . $values,
         '#required' => $info['required'],
         '#default_value' => !empty($commerce_ads_ws['ads_order_mapping'][$ads_field_name]) ? $commerce_ads_ws['ads_order_mapping'][$ads_field_name] : '',
       );
     }
   }
+  foreach($commerce_ads_ws['ads_order_fields']['commerce_order'] as $ads_field_name => $info) {
+    $form['ads_order_mapping']['fields'][$ads_field_name] = array(
+      '#title' => t($ads_field_name),
+      '#type' => 'select',
+      '#multiple' => TRUE,
+      '#options' => commerce_ads_get_all_commerce_order_fields(),
+      '#description' => $info['description'],
+      '#required' => $info['required'],
+      '#default_value' => !empty($commerce_ads_ws['ads_order_mapping'][$ads_field_name]) ? $commerce_ads_ws['ads_order_mapping'][$ads_field_name] : '',
+    );
+  }
+  // Order synchronization.
+  $form['ads_order_synchronization'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Synchronization'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['ads_order_synchronization']['ads_send_newly_created_order'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Send to ADS the newly created order (matching the above validation status)'),
+    '#default_value' => array_key_exists('ads_send_newly_created_order', $commerce_ads_ws) ? $commerce_ads_ws['ads_send_newly_created_order'] : TRUE,
+  );
+  $form['ads_order_synchronization']['ads_order_send_frequency'] = array(
+    '#type' => 'select',
+    '#title' => t('Send to ADS the newly created order (matching the above validation status)'),
+    '#options' => array(
+      '' => t('Select a value'),
+      '300' => t('5 minutes'),
+      '600' => t('10 minutes'),
+      '1800' => t('30 minutes'),
+      '3600' => t('1 hour'),
+      '7200' => t('2 hours'),
+    ),
+    '#default_value' => !empty($commerce_ads_ws['ads_order_send_frequency']) ? $commerce_ads_ws['ads_order_send_frequency'] : '',
+  );
+  $form['ads_order_synchronization']['ads_send_order'] = array(
+    '#type' => 'submit',
+    '#value' => t('Send all orders.'),
+    '#submit' => array('commerce_ads_send_all_orders_batch_submit'),
+  );
+
+  // Order update.
+  $form['ads_order_update'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Update'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['ads_order_update']['ads_order_update_frequency'] = array(
+    '#type' => 'select',
+    '#title' => t('Order update frequency'),
+    '#description' => t('Update frequency of an order shipping status once it has been sent to ADS'),
+    '#options' => array(
+      '' => t('Select a value'),
+      '300' => t('5 minutes'),
+      '600' => t('10 minutes'),
+      '1800' => t('30 minutes'),
+      '3600' => t('1 hour'),
+      '7200' => t('2 hours'),
+    ),
+    '#default_value' => !empty($commerce_ads_ws['ads_order_update_frequency']) ? $commerce_ads_ws['ads_order_update_frequency'] : '',
+  );
+  $form['ads_order_update']['ads_update_order'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update all orders.'),
+    '#submit' => array('commerce_ads_update_all_orders'),
+  );
 
   $form['submit'] = array(
     '#type' => 'submit',
@@ -216,9 +394,20 @@ function commerce_ads_order_configure_form_submit($form, &$form_state) {
   if (!empty($form_state['values']['ads_order_mapping']['fields'])) {
     $commerce_ads_ws['ads_order_mapping'] = $form_state['values']['ads_order_mapping']['fields'];
   }
+  $commerce_ads_ws['ads_send_newly_created_order'] = $form_state['values']['ads_order_synchronization']['ads_send_newly_created_order'];
+  if (!empty($form_state['values']['ads_order_synchronization']['ads_order_send_frequency'])) {
+    $commerce_ads_ws['ads_order_send_frequency'] = $form_state['values']['ads_order_synchronization']['ads_order_send_frequency'];
+  }
+  if (!empty($form_state['values']['ads_order_update']['ads_order_update_frequency'])) {
+    $commerce_ads_ws['ads_order_update_frequency'] = $form_state['values']['ads_order_update']['ads_order_update_frequency'];
+  }
   variable_set('commerce_ads_ws', $commerce_ads_ws);
+  drupal_set_message(t('Configuration saved'));
 }
 
+/**
+ * Ajax callback to get customer profile type fields
+ */
 function commerce_ads_ajax_get_profile_fields($form, $form_state) {
   return $form['ads_order_mapping'];
 }
@@ -233,14 +422,33 @@ function commerce_ads_ajax_get_profile_fields($form, $form_state) {
  */
 function commerce_ads_get_all_customer_profile_fields($customer_profile_type) {
   $fields = array();
+  $adressfield = FALSE;
   $customer_profile_fields = field_info_instances('commerce_customer_profile', $customer_profile_type);
   foreach($customer_profile_fields as $field) {
     if ($field['widget']['module'] !== "addressfield") {
       $fields[$field['field_name']] = $field['label'] . ' - (' . $field['field_name'] . ')';
     }
+    else {
+      $adressfield = $field['field_name'];
+    }
   }
-  foreach (addressfield_data_property_info() as $address_field_name => $address_field_info) {
-    $fields[$address_field_name] = $address_field_info['label'] . ' - (' . $address_field_name . ')';
+  if ($adressfield) {
+    foreach (addressfield_data_property_info() as $address_field_name => $address_field_info) {
+      $fields[$adressfield . '|' . $address_field_name] = $address_field_info['label'] . ' - (' . $address_field_name . ')';
+    }
+  }
+  return $fields;
+}
+
+/**
+ * Get all commerce order fields.
+ */
+function commerce_ads_get_all_commerce_order_fields() {
+  $fields = array();
+  foreach(field_info_instances('commerce_order', 'commerce_order') as $field) {
+    if (!in_array($field['widget']['module'], array('commerce_line_item', 'commerce_customer', 'entityreference', 'commerce_price'))) {
+      $fields[$field['field_name']] = $field['label'] . ' - (' . $field['field_name'] . ')';
+    }
   }
   return $fields;
 }
@@ -250,6 +458,32 @@ function commerce_ads_get_all_customer_profile_fields($customer_profile_type) {
  */
 function commerce_ads_shipping_configure_form($form, &$form_state) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+
+  // Shipping statuses.
+  $form['ads_shipping_statuses'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Shipping statuses'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  if (!empty($commerce_ads_ws['ads_base_url']) && !empty($commerce_ads_ws['ads_authorization_key'])) {
+    foreach (commerce_ads_shipping_statuses() as $ads_status) {
+      $form['ads_shipping_statuses'][$ads_status['StateId']] = array(
+        '#type' => 'select',
+        '#title' => t($ads_status['Label']),
+        '#options' => commerce_order_status_options_list(),
+        '#default_value' => !empty($commerce_ads_ws['ads_shipping_statuses'][$ads_status['StateId']]) ? $commerce_ads_ws['ads_shipping_statuses'][$ads_status['StateId']] : '',
+      );
+    }
+  }
+  else {
+    $form['ads_shipping_statuses']['help'] = array(
+      '#markup' => t('You have to set shopip in "Configure" tab first'),
+    );
+  }
+
+  // Shipping services
   $form['ads_shipping_services'] = array(
     '#tree' => TRUE,
     '#type' => 'fieldset',
@@ -281,19 +515,64 @@ function commerce_ads_shipping_configure_form_submit($form, &$form_state) {
   if (!empty($form_state['values']['ads_shipping_services'])) {
     $commerce_ads_ws['ads_shipping_services'] = $form_state['values']['ads_shipping_services'];
   }
+  if (!empty($form_state['values']['ads_shipping_statuses'])) {
+    $commerce_ads_ws['ads_shipping_statuses'] = $form_state['values']['ads_shipping_statuses'];
+  }
   variable_set('commerce_ads_ws', $commerce_ads_ws);
+  drupal_set_message(t('Configuration saved'));
 }
 
 /**
- * This function creates an option list with order statuses.
- *
- * @return array
- *   An array of existing order statuses keyed by machine name.
+ * This function return an option list with all the user field.
  */
-function commerce_ads_get_order_statuses_options() {
-  $statuses = array();
-  foreach (commerce_order_statuses() as $status) {
-    $statuses[$status['name']] = $status['title'];
+function commerce_ads_get_all_user_fields() {
+  $user_fields = field_info_instances('user');
+  $fields = array();
+  if (!empty($user_fields['user'])) {
+    foreach ($user_fields['user'] as $field) {
+      $fields[$field['field_name']] = $field['label'] . ' (' . $field['field_name'] . ')';
+    }
   }
-  return $statuses;
+  return $fields;
+}
+
+function commerce_ads_shipping_statuses() {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  $response = commerce_ads_request_ads('api/customerOrders/getStatusList', array(
+    'method' => 'GET',
+    'timeout' => 6000,
+    'headers' => array(
+      'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
+    ),
+  ));
+  if ($response['Code'] === 0) {
+    return $response['Data'];
+  }
+  else {
+    return array();
+  }
+}
+
+function commerce_ads_send_all_products_batch_submit($form, &$form_state) {
+  // Reset counter for debug information.
+  $_SESSION['http_request_count'] = 0;
+  batch_set(
+    array(
+      'operations' => array(
+        array('commerce_ads_send_all_products', array())
+      ),
+    )
+  );
+}
+
+function commerce_ads_send_all_orders_batch_submit($form, &$form_state) {
+  // Reset counter for debug information.
+  $_SESSION['http_request_count'] = 0;
+  batch_set(
+    array(
+      'operations' => array(
+        array('commerce_ads_send_all_orders', array())
+      ),
+    )
+  );
 }
