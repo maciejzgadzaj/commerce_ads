@@ -306,12 +306,14 @@ function commerce_ads_order_configure_form($form, &$form_state) {
     }
   }
   foreach($commerce_ads_ws['ads_order_fields']['commerce_order'] as $ads_field_name => $info) {
+    $description = !empty($info['description']) ? $info['description'] : '';
+    $values = !empty($info['values']) ? $info['values'] : '';
     $form['ads_order_mapping']['fields'][$ads_field_name] = array(
       '#title' => t($ads_field_name),
       '#type' => 'select',
       '#multiple' => TRUE,
       '#options' => commerce_ads_get_all_commerce_order_fields(),
-      '#description' => $info['description'],
+      '#description' => $description. '|' . $values,
       '#required' => $info['required'],
       '#default_value' => !empty($commerce_ads_ws['ads_order_mapping'][$ads_field_name]) ? $commerce_ads_ws['ads_order_mapping'][$ads_field_name] : '',
     );
@@ -405,11 +407,54 @@ function commerce_ads_order_configure_form_submit($form, &$form_state) {
   drupal_set_message(t('Configuration saved'));
 }
 
+function theme_commerce_ads_order_configure_form($variables) {
+  $form = array();
+  $form['ads_order_status'] = array('#markup' => drupal_render($variables['form']['ads_order_status']));
+  $form['ads_customer_profile_type'] = array('#markup' => drupal_render($variables['form']['ads_order_mapping']['ads_customer_profile_type']));
+  $form['fields'] = array(
+    '#markup' => theme('commerce_ads_order_mapping', array('form_element_mapping' => $variables['form']['ads_order_mapping']['fields'])),
+  );
+  $form['ads_order_synchronization'] = array('#markup' => drupal_render($variables['form']['ads_order_synchronization']));
+  unset($variables['form']['ads_order_mapping']);
+
+  $form['ads_order_update'] = array('#markup' => drupal_render($variables['form']['ads_order_update']));
+  $form['submit'] = array('#markup' => drupal_render($variables['form']['submit']));
+  return drupal_render($form) . drupal_render_children($variables['form']);
+}
+
 /**
  * Ajax callback to get customer profile type fields
  */
 function commerce_ads_ajax_get_profile_fields($form, $form_state) {
-  return $form['ads_order_mapping'];
+  if (!empty($form_state['values']['ads_order_mapping']['ads_customer_profile_type'])) {
+    return theme('commerce_ads_order_mapping', array('form_element_mapping' => $form['ads_order_mapping']['fields']));
+  }
+  else {
+    return '<div id="ads-order-mapping"></div>';
+  }
+}
+
+/**
+ * Theme function to render mapping as table.
+ */
+function theme_commerce_ads_order_mapping($variables) {
+  if (!empty($variables['form_element_mapping'])) {
+    $rows = array();
+    $header = array(t('Field'), t('Description'), t('Value'), t('Mapping'));
+    foreach (element_children($variables['form_element_mapping']) as $key) {
+      $info = explode('|', $variables['form_element_mapping'][$key]['#description']);
+      $rows[] = array(
+        $key,
+        !empty($info[0]) ? $info[0] : '',
+        !empty($info[1]) ? $info[1] : '',
+        drupal_render($variables['form_element_mapping'][$key]),
+      );
+    }
+    if (!empty($rows)) {
+      return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => array('ads-order-mapping'))));
+    }
+  }
+  return '<div id="ads-order-mapping"></div>';
 }
 
 /**

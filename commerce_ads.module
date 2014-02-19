@@ -349,5 +349,9 @@ function commerce_ads_theme() {
     'commerce_ads_order_configure_form' => array(
       'render element' => 'form',
     ),
+    'commerce_ads_order_mapping' => array(
+      'variables' => array(
+        'form_element_mapping' => ''),
+    ),
   );
 }
