@@ -366,13 +366,14 @@ function commerce_ads_send_all_products() {
  *  Whether or not the webservice is reachable with those info.
  */
 function commerce_ads_check_login_ws($url, $authorization_key = '') {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   $response = commerce_ads_request_ads(
     'api/Check/Login',
     array(
       'method' => 'POST',
       'timeout' => 6000,
       'headers' => array(
-        'Authorization' => $authorization_key,
+        'Authorization' => !empty($authorization_key) ? $authorization_key : !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
       ),
     ),
     $url
