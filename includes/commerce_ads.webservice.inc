@@ -365,7 +365,7 @@ function commerce_ads_send_all_products() {
  * @return bool
  *  Whether or not the webservice is reachable with those info.
  */
-function commerce_ads_check_login_ws($url, $authorization_key = '') {
+function commerce_ads_check_login_ws($url = '', $authorization_key = '') {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   $response = commerce_ads_request_ads(
     'api/Check/Login',
