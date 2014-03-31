@@ -122,6 +122,7 @@ function commerce_ads_send_products($products = array()) {
           )
         ),
       );
+      drupal_alter('commerce_ads_product', $product_to_send);
       if ($product->commerce_ads_product_needs_update->value() == PRODUCT_TO_BE_UPDATED) {
         $product_update_json[] = $product_to_send;
       }
@@ -221,6 +222,7 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
             ),
           ),
         );
+        drupal_alter('commerce_ads_order', $order_to_send);
         if ($order_wrapper->commerce_ads_order_needs_update->value() == ORDER_TO_BE_UPDATED) {
           $order_update_json[] = $order_to_send;
         }
