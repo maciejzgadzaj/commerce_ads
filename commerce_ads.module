@@ -244,11 +244,18 @@ function commerce_ads_commerce_product_update($product) {
   // Update product when being updated (if checked in ads config)
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   if (!is_array($product->type) && in_array($product->type, $commerce_ads_ws['ads_product_types']) && $product->commerce_ads_product_needs_update == $product->original->commerce_ads_product_needs_update) {
-    $product = entity_metadata_wrapper('commerce_product', $product);
-    $product->commerce_ads_product_needs_update->set(PRODUCT_TO_BE_UPDATED);
-    commerce_product_save($product->value());
-    if (!empty($product->product_id) && !empty($commerce_ads_ws['ads_send_newly_created_product']) && in_array($product->commerce_ads_product_needs_update->value(), array(PRODUCT_TO_BE_UPDATED, PRODUCT_TO_BE_CREATED))) {
-      commerce_ads_send_products(array($product->product_id->value()));
+    if ($product->commerce_ads_product_needs_update == PRODUCT_SENT) {
+      $product->commerce_ads_product_needs_update = PRODUCT_TO_BE_UPDATED;
+    }
+    if (!empty($product->product_id) && !empty($commerce_ads_ws['ads_send_newly_created_product']) && in_array($product->commerce_ads_product_needs_update, array(PRODUCT_TO_BE_UPDATED, PRODUCT_TO_BE_CREATED))) {
+      // Bypass infinite loop.
+      db_update('commerce_product')
+        ->fields(array(
+        'commerce_ads_product_needs_update' => $product->commerce_ads_product_needs_update,
+        ))
+        ->condition('product_id', $product->product_id)
+        ->execute();
+      commerce_ads_send_products(array($product->product_id));
     }
   }
 }

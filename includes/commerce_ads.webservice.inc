@@ -85,7 +85,6 @@ function commerce_ads_send_products($products = array()) {
     $product_create_json = array();
     foreach ($products as $product) {
       $product = entity_metadata_wrapper('commerce_product', $product);
-
       // Size.
       $dimension = commerce_ads_get_field_value('Size (Physical)', $product, $commerce_ads_ws['ads_product_mapping'], 'commerce_product');
       $weight = commerce_ads_get_field_value('Size (Weight)', $product, $commerce_ads_ws['ads_product_mapping'], 'commerce_product');
@@ -129,8 +128,13 @@ function commerce_ads_send_products($products = array()) {
       elseif ($product->commerce_ads_product_needs_update->value() == PRODUCT_TO_BE_CREATED) {
         $product_create_json[] = $product_to_send;
       }
-      $product->commerce_ads_product_needs_update->set(PRODUCT_SENT);
-      commerce_product_save($product->value());
+      // Bypass infinite loop.
+      db_update('commerce_product')
+        ->fields(array(
+        'commerce_ads_product_needs_update' => PRODUCT_SENT,
+      ))
+        ->condition('product_id', $product->product_id->value())
+        ->execute();
     }
 
     if (!empty($product_update_json)) {
