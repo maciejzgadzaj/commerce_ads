@@ -390,7 +390,7 @@ function commerce_ads_check_login_ws($url = '', $authorization_key = '') {
     ),
     $url
   );
-  if (isset($response['Code']) && $response['Code'] === 0) {
+  if (!is_object($response) && isset($response['Code']) && $response['Code'] === 0) {
     return TRUE;
   }
   else {
