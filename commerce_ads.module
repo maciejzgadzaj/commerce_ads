@@ -214,7 +214,7 @@ function commerce_ads_get_order_info($order_wrapper) {
           $order_line_item_info['DeliverymanId'] = $commerce_ads_ws['ads_shipping_services'][$line_item->commerce_shipping_service->value()];
         }
       }
-      elseif ($line_item->type->value() == "product") {
+      elseif ($line_item->type->value() == "product" && in_array($line_item->commerce_product->type->value(), $commerce_ads_ws['ads_product_types'])) {
         $order_line_item_info['products'][] = array(
           'ProductId' => $line_item->commerce_product->product_id->value(),
           'Label' => $line_item->commerce_product->title->value(),
