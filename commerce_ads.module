@@ -285,27 +285,31 @@ function commerce_ads_entity_property_info_alter(&$info) {
  */
 function commerce_ads_commerce_order_update($order) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   $result = db_select('commerce_order', 'c')
     ->fields('c', array('commerce_ads_order_needs_update'))
-    ->condition('order_id', $order_wrapper->order_id->value())
+    ->condition('order_id', $order->order_id)
     ->execute()
     ->fetchAssoc();
   if (isset($result['commerce_ads_order_needs_update'])) {
-    $save = FALSE;
     if ($result['commerce_ads_order_needs_update'] == ORDER_SENT) {
-      $order_wrapper->commerce_ads_order_needs_update->set(ORDER_TO_BE_UPDATED);
-      $save = TRUE;
+      $result['old_commerce_ads_order_needs_update'] = $result['commerce_ads_order_needs_update'];
+      $result['commerce_ads_order_needs_update'] = ORDER_TO_BE_UPDATED;
     }
     if ($order->status != $order->original->status && !empty($commerce_ads_ws['ads_order_status']) && $order->status === $commerce_ads_ws['ads_order_status'] && $result['commerce_ads_order_needs_update'] != ORDER_SENT) {
-      $order_wrapper->commerce_ads_order_needs_update->set(ORDER_TO_BE_CREATED);
-      $save = TRUE;
+      $result['old_commerce_ads_order_needs_update'] = $result['commerce_ads_order_needs_update'];
+      $result['commerce_ads_order_needs_update'] = ORDER_TO_BE_CREATED;
+    }
+    if (isset($result['old_commerce_ads_order_needs_update'])) {
+      // Bypass infinite loop.
+      db_update('commerce_order')
+        ->fields(array(
+        'commerce_ads_order_needs_update' => $result['commerce_ads_order_needs_update'],
+      ))
+        ->condition('order_id', $order->order_id)
+        ->execute();
     }
     if (!empty($commerce_ads_ws['ads_send_newly_created_order']) && in_array($result['commerce_ads_order_needs_update'], array(ORDER_TO_BE_UPDATED, ORDER_TO_BE_CREATED))) {
       commerce_ads_send_order(array($order->order_id));
-    }
-    elseif ($save) {
-      commerce_order_save($order);
     }
   }
 }

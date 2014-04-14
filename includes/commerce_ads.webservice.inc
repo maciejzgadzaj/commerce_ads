@@ -182,6 +182,12 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
     $order_update_json = array();
     foreach ($orders as $order) {
       $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+      $result = db_select('commerce_order', 'c')
+        ->fields('c', array('commerce_ads_order_needs_update'))
+        ->condition('order_id', $order_wrapper->order_id->value())
+        ->execute()
+        ->fetchAssoc();
+
       if (commerce_ads_order_needs_to_be_sent($order_wrapper, $commerce_ads_ws['ads_product_types'])) {
         $order_info = commerce_ads_get_order_info($order_wrapper);
         // Shipping.
@@ -227,10 +233,10 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
           ),
         );
         drupal_alter('commerce_ads_order', $order_to_send);
-        if ($order_wrapper->commerce_ads_order_needs_update->value() == ORDER_TO_BE_UPDATED) {
+        if ($result['commerce_ads_order_needs_update']== ORDER_TO_BE_UPDATED) {
           $order_update_json[] = $order_to_send;
         }
-        elseif ($order_wrapper->commerce_ads_order_needs_update->value() == ORDER_TO_BE_CREATED) {
+        elseif ($result['commerce_ads_order_needs_update'] == ORDER_TO_BE_CREATED) {
           $order_create_json[] = $order_to_send;
         }
         // Bypass infinite loop in hook_commerce_order_update().
