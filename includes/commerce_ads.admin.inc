@@ -64,16 +64,16 @@ function commerce_ads_configure_form_validate(&$form, &$form_state) {
 
 function commerce_ads_configure_form_submit($form, &$form_state) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  if (!empty($form_state['values']['commerce_ads_ws']['ads_shopid'])) {
+  if (isset($form_state['values']['commerce_ads_ws']['ads_shopid'])) {
     $commerce_ads_ws['ads_shopid'] = $form_state['values']['commerce_ads_ws']['ads_shopid'];
   }
-  if (!empty($form_state['values']['commerce_ads_ws']['ads_base_url'])) {
+  if (isset($form_state['values']['commerce_ads_ws']['ads_base_url'])) {
     $commerce_ads_ws['ads_base_url'] = $form_state['values']['commerce_ads_ws']['ads_base_url'];
   }
-  if (!empty($form_state['values']['commerce_ads_ws']['ads_authorization_key'])) {
+  if (isset($form_state['values']['commerce_ads_ws']['ads_authorization_key'])) {
     $commerce_ads_ws['ads_authorization_key'] = $form_state['values']['commerce_ads_ws']['ads_authorization_key'];
   }
-  if (!empty($form_state['values']['commerce_ads_ws']['ads_ws_mode'])) {
+  if (isset($form_state['values']['commerce_ads_ws']['ads_ws_mode'])) {
     $commerce_ads_ws['ads_ws_mode'] = $form_state['values']['commerce_ads_ws']['ads_ws_mode'];
   }
   variable_set('commerce_ads_ws', $commerce_ads_ws);

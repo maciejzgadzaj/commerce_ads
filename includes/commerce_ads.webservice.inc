@@ -379,13 +379,18 @@ function commerce_ads_send_all_products() {
  */
 function commerce_ads_check_login_ws($url = '', $authorization_key = '') {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  if (empty($authorization_key)) {
+    if (!empty($commerce_ads_ws['ads_authorization_key'])) {
+      $authorization_key = $commerce_ads_ws['ads_authorization_key'];
+    }
+  }
   $response = commerce_ads_request_ads(
     'api/Check/Login',
     array(
       'method' => 'POST',
       'timeout' => 6000,
       'headers' => array(
-        'Authorization' => !empty($authorization_key) ? $authorization_key : !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
+        'Authorization' => $authorization_key,
       ),
     ),
     $url
