@@ -36,6 +36,9 @@ function commerce_ads_request_ads($service, $options = array(), $url = '') {
  */
 function commerce_ads_request_ads_log($response) {
   $log = '';
+  if (!empty($response['Comment'])) {
+    $log .= $response['Comment'] . "\n";
+  }
   if (!empty($response['Data']['Number']) && !empty($response['Data']['Shippings'])) {
     $log .= 'Order n°' . $response['Data']['Number'] . ' updated.';
   }
@@ -48,9 +51,6 @@ function commerce_ads_request_ads_log($response) {
   }
   elseif (!empty($response['Message'])) {
     $log .= $response['Message'];
-  }
-  elseif (!empty($response['Comment'])) {
-    $log .= $response['Comment'];
   }
   else {
     $log .= 'Response empty';
