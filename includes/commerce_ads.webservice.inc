@@ -191,7 +191,7 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
       if (commerce_ads_order_needs_to_be_sent($order_wrapper, $commerce_ads_ws['ads_product_types'])) {
         $order_info = commerce_ads_get_order_info($order_wrapper);
         // Shipping.
-        $shipping_fields = array('FirstName','LastName','CompanyName','AddressLine1','AddressLine2','AddressLine3','PostalCode','City','State','Country','MobilePhone','Phone','Comment','Floor','Apartment','Building','Digicode','PickupCode','PickupCountry');
+        $shipping_fields = array('FirstName','LastName','CompanyName','AddressLine1','AddressLine2','AddressLine3','PostalCode','City','State','Country','MobilePhone','Phone','Floor','Apartment','Building','Digicode','PickupCode','PickupCountry');
         // Address.
         $customer_profile_type = 'commerce_customer_' . $commerce_ads_ws['ads_customer_profile_type'];
         $address_array = array();
@@ -199,6 +199,7 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
           foreach ($shipping_fields as $shipping_field) {
             $address_array[$shipping_field] = commerce_ads_get_field_value($shipping_field, entity_metadata_wrapper('commerce_customer_profile', $order_wrapper->$customer_profile_type->value()), $commerce_ads_ws['ads_order_mapping'], 'commerce_customer_profile');
           }
+          $address_array['Comment'] = substr(commerce_ads_get_field_value('Comment', entity_metadata_wrapper('commerce_customer_profile', $order_wrapper->$customer_profile_type->value()), $commerce_ads_ws['ads_order_mapping'], 'commerce_customer_profile'), 0, 40);
         }
         $address_array['Email'] = $order_wrapper->mail->value();
 
