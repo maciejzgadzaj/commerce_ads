@@ -6,10 +6,6 @@
 function commerce_ads_install() {
   $ads_fields = array(
     'ads_product_fields' => array(
-      'Label' => array(
-        'description' => t('The label may will appear on the delivery slid (Max: 30 chars)'),
-        'required' => FALSE,
-      ),
       'Picture' => array(
         'values' => t('An URI of the image of the specified picture. (Max: 250 chars'),
         'description' => t('The picture of the specified product.'),
