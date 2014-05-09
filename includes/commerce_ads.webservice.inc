@@ -205,9 +205,11 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
         // Product lines.
         $product_array = array();
         foreach ($order_info['products'] as $product) {
-          $product_array['ProductId'] = $product['ProductId'];
-          $product_array['Label'] = $product['Label'];
-          $product_array['Quantity'] = (int) $product['Quantity'];
+          $product_array[] = array(
+            'Label' => $product['Label'],
+            'ProductId' => $product['ProductId'],
+            'Quantity' => (int) $product['Quantity'],
+          );
         }
         $message = str_split(commerce_ads_get_field_value('GiftMessage', $order_wrapper, $commerce_ads_ws['ads_order_mapping'], 'commerce_order'), 50);
         $order_to_send = array(
@@ -228,7 +230,7 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
             array(
               'Address' => $address_array,
               'DeliverymanId' => !empty($order_info['DeliverymanId']) ? $order_info['DeliverymanId'] : 'EXAPAQ',
-              'ProductLines' => array($product_array),
+              'ProductLines' => $product_array,
             ),
           ),
         );
