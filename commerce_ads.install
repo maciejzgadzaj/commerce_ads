@@ -49,9 +49,9 @@ function commerce_ads_install() {
           'description' => t('Determine if the order is a gift'),
           'required' => FALSE,
         ),
-        'Bloked' => array(
+        'Blocked' => array(
           'values' => t('True/False'),
-          'description' => t('Determine if the order is bloked'),
+          'description' => t('Determine if the order is blocked'),
           'required' => FALSE,
         ),
         'GiftMessage' => array(
