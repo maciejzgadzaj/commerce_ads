@@ -194,6 +194,15 @@ function commerce_ads_get_product_translation($entity_wrapped) {
       }
     }
   }
+  // If no product field was mapped to TranslationEntity,
+  // let's just return entity title property.
+  else {
+    global $language;
+    if (!$entity_language = entity_language($entity_wrapped->type->value(), $entity_wrapped->value())) {
+      $entity_language = $language->language;
+    }
+    $translation[$entity_language] = $entity_wrapped->title->value();
+  }
   return $translation;
 }
 

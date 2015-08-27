@@ -31,10 +31,9 @@ function commerce_ads_install() {
         'required' => FALSE,
       ),
       'TranslationEntity' => array(
-        'values' => t('-Label: Description of the product (Max : 100 chars)
-          -Language: ISO code of the language (Max : 2 chars)'),
-        'description' => t('A description of the product.'),
-        'required' => TRUE,
+        'values' => t('- Label: Description of the product (Max : 100 chars)<br />- Language: ISO code of the language (Max : 2 chars)'),
+        'description' => t("A description of the product. If no mapping is selected, the product's <em>title</em> property will be used."),
+        'required' => FALSE,
       ),
     ),
     'ads_order_fields' => array(
