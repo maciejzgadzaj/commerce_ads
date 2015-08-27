@@ -118,6 +118,11 @@ function commerce_ads_send_products($products = array()) {
         );
       }
 
+      // EAN.
+      if (!$ean = commerce_ads_get_field_value('EanEntity', $product, $commerce_ads_ws['ads_product_mapping'], 'commerce_product')) {
+        $ean = $product->sku->value();
+      }
+
       $product_to_send = array(
         'ProductId' => substr($product->product_id->value(), 0, 18),
         'Type' => 'PRODUCT',
@@ -126,17 +131,20 @@ function commerce_ads_send_products($products = array()) {
         'Translations' => $translation_array,
         'Eans' => array(
           array(
-            'Ean13' => substr($product->sku->value(), 0, 30),
+            'Ean13' => substr($ean, 0, 32),
           )
         ),
       );
+
       drupal_alter('commerce_ads_product', $product_to_send);
+
       if ($product->commerce_ads_product_needs_update->value() == PRODUCT_TO_BE_UPDATED) {
         $product_update_json[] = $product_to_send;
       }
       elseif ($product->commerce_ads_product_needs_update->value() == PRODUCT_TO_BE_CREATED) {
         $product_create_json[] = $product_to_send;
       }
+
       // Bypass infinite loop.
       db_update('commerce_product')
         ->fields(array(

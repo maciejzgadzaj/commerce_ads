@@ -30,6 +30,11 @@ function commerce_ads_install() {
         'description' => t("A description of the product. If no mapping is selected, the product's <em>title</em> property will be used."),
         'required' => FALSE,
       ),
+      'EanEntity' => array(
+        'values' => t('- EAN13 (Max : 32 chars)'),
+        'description' => t("The EAN13 code of the product. If no mapping is selected, the product's <em>SKU</em> property will be used."),
+        'required' => FALSE,
+      ),
     ),
     'ads_order_fields' => array(
       'commerce_order' => array(
