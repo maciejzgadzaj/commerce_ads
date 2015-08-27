@@ -17,7 +17,17 @@ function commerce_ads_request_ads($service, $options = array(), $url = '') {
   else {
     $url .= $service;
   }
+
+  // 'Authorization' header should start with 'Basic ' string.
+  if (
+    !empty($options['headers']['Authorization'])
+    && strpos($options['headers']['Authorization'], 'Basic ') !== 0
+  ) {
+    $options['headers']['Authorization'] = 'Basic ' . $options['headers']['Authorization'];
+  }
+
   $response = drupal_http_request($url, $options);
+
   if (!empty($response->data)) {
     $response = json_decode($response->data, TRUE);
     commerce_ads_request_ads_log($response);
