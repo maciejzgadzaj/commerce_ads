@@ -142,14 +142,18 @@ function commerce_ads_get_field_value($ads_field_name, $entity_wrapped, $mapping
         $field_info = field_info_field($field[0]);
         // Get different value depending on field type.
         $field_value = $entity_wrapped->$field[0]->value();
-        if ($field_info['type'] === 'image' && !empty($field_value[0])) {
-          return file_create_url($field_value[0]['uri']);
+        // If field allows for multiple values, we want only the first one.
+        if ($field_info['cardinality'] <> 1) {
+          $field_value = $field_value[0];
+        }
+        if ($field_info['type'] === 'image' && !empty($field_value['uri'])) {
+          return file_create_url($field_value['uri']);
         }
         elseif (in_array($field_info['type'], array('datetime', 'date', 'datestamp', 'number_decimal', 'number_float', 'number_integer', 'list_float', 'list_integer', 'list_text', 'text_long', 'text', 'text_long', 'text_with_summary', 'physical_dimensions', 'physical_weight'))) {
           return $field_value;
         }
         elseif ($field_info['type'] === 'list_boolean') {
-          return $field_value?'TRUE':'FALSE';
+          return $field_value ? 'TRUE' : 'FALSE';
         }
         elseif ($field_info['type'] === "taxonomy_term_reference") {
           return $entity_wrapped->$field[0]->name->value();
