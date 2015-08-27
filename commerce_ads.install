@@ -11,11 +11,6 @@ function commerce_ads_install() {
         'description' => t('The picture of the specified product.'),
         'required' => FALSE,
       ),
-      'fileUrl' => array(
-        'values' => t('An URI of the pdf file'),
-        'description' => t('A mail which will be user in the order containing this product.'),
-        'required' => FALSE,
-      ),
       'Size (Physical)' => array(
         'values' => t('-Height (in millimeters)
           -Length (in millimeters)
