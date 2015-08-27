@@ -12,16 +12,12 @@ function commerce_ads_install() {
         'required' => FALSE,
       ),
       'Size (Physical)' => array(
-        'values' => t('-Height (in millimeters)
-          -Length (in millimeters)
-          -Width (in millimeters)
-          -Volume (in millimeters3
-          -Weight (in grams)'),
+        'values' => t('- Height (in millimeters)<br />- Length (in millimeters)<br />- Width (in millimeters)<br />- Volume (in millimeters3<br />- Weight (in grams)'),
         'description' => t('Dimensions of the product.'),
         'required' => FALSE,
       ),
       'Size (Weight)' => array(
-        'values' => t('-Weight (in grams)'),
+        'values' => t('- Weight (in grams)'),
         'description' => t('Weight of the product.'),
         'required' => FALSE,
       ),
