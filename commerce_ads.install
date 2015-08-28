@@ -137,6 +137,7 @@ function commerce_ads_install() {
     'ads_order_send_next_run' => 0,
     'ads_order_update_next_run' => 0,
     'ads_product_send_next_run' => 3600,
+    'ads_product_stock_sync_next_run' => 3600,
   );
   variable_set('commerce_ads_ws', $ads_fields);
 

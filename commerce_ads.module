@@ -29,6 +29,11 @@ define('PRODUCT_TO_BE_UPDATED', 1);
  */
 define('PRODUCT_SENT', -1);
 
+/**
+ * Name of the variable used to mark the product update as running.
+ */
+define('COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING', 'commerce_ads_ws_product_update_running');
+
 include_once 'includes/commerce_ads.webservice.inc';
 
 /**
@@ -95,23 +100,30 @@ function commerce_ads_cron() {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
 
   // Send all order to ads.
-  if (isset($commerce_ads_ws['ads_order_send_frequency']) && time() >= $commerce_ads_ws['ads_order_send_next_run']) {
+  if (!empty($commerce_ads_ws['ads_order_send_frequency']) && time() >= $commerce_ads_ws['ads_order_send_next_run']) {
     $commerce_ads_ws['ads_order_send_next_run'] = time() + $commerce_ads_ws['ads_order_send_frequency'];
     commerce_ads_send_all_orders();
     variable_set('commerce_ads_ws', $commerce_ads_ws);
   }
 
   // Update all order on ads side.
-  if (isset($commerce_ads_ws['ads_order_update_frequency']) && time() >= $commerce_ads_ws['ads_order_update_next_run']) {
+  if (!empty($commerce_ads_ws['ads_order_update_frequency']) && time() >= $commerce_ads_ws['ads_order_update_next_run']) {
     $commerce_ads_ws['ads_order_update_next_run'] = time() + $commerce_ads_ws['ads_order_update_frequency'];
     commerce_ads_update_all_orders();
     variable_set('commerce_ads_ws', $commerce_ads_ws);
   }
 
   // Synchronize products.
-  if (isset($commerce_ads_ws['ads_product_send_frequency']) && time() >= $commerce_ads_ws['ads_product_send_next_run']) {
+  if (!empty($commerce_ads_ws['ads_product_send_frequency']) && time() >= $commerce_ads_ws['ads_product_send_next_run']) {
     $commerce_ads_ws['ads_product_send_next_run'] = time() + $commerce_ads_ws['ads_product_send_frequency'];
     commerce_ads_send_all_products();
+    variable_set('commerce_ads_ws', $commerce_ads_ws);
+  }
+
+  // Synchronize product stocks.
+  if (!empty($commerce_ads_ws['ads_product_stock_sync_frequency']) && time() >= $commerce_ads_ws['ads_product_stock_sync_next_run']) {
+    $commerce_ads_ws['ads_product_stock_sync_next_run'] = time() + $commerce_ads_ws['ads_product_stock_sync_frequency'];
+    commerce_ads_update_stock_for_all_products();
     variable_set('commerce_ads_ws', $commerce_ads_ws);
   }
 }
@@ -243,6 +255,52 @@ function commerce_ads_get_order_info($order_wrapper) {
 }
 
 /**
+ * Implements hook_commerce_product_load().
+ */
+function commerce_ads_commerce_product_load($products) {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+
+  // Update product stock information if required.
+  if (
+    !empty($commerce_ads_ws['ads_product_stock_sync_load'])
+    && module_exists('commerce_stock')
+    // Do not call ADS API if the batch update is already running.
+    && !variable_get(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING, FALSE)
+  ) {
+    // Set variable to mark batch update running. This will disable
+    // parallel calls to ADS API while products are being updated.
+    variable_set(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING, TRUE);
+
+    // Get stock for all products from ADS.
+    $stocks = commerce_ads_get_stock_for_all_products();
+
+    // Update stock for all loaded products.
+    foreach ($products as $product) {
+      if (!empty($stocks[$product->product_id])) {
+        commerce_ads_update_product_stock($product, $stocks[$product->product_id]);
+      }
+    }
+
+    // Delete variable marking batch product update as running.
+    variable_del(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING);
+  }
+}
+
+/**
+ * Updates product entity with relevant stock values.
+ *
+ * @param object $product
+ *   A commerce_product entity.
+ * @param array $stock_item
+ *   An array of stock information for the given product received from ADS API.
+ */
+function commerce_ads_update_product_stock($product, $stock_item) {
+  $wrapper = entity_metadata_wrapper('commerce_product', $product);
+  $wrapper->commerce_stock = $stock_item['StockQuantity'];
+  $wrapper->save();
+}
+
+/**
  * Implements hook_commerce_product_insert().
  */
 function commerce_ads_commerce_product_insert($product) {
@@ -259,7 +317,13 @@ function commerce_ads_commerce_product_insert($product) {
 function commerce_ads_commerce_product_update($product) {
   // Update product when being updated (if checked in ads config)
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  if (!is_array($product->type) && in_array($product->type, $commerce_ads_ws['ads_product_types']) && $product->commerce_ads_product_needs_update == $product->original->commerce_ads_product_needs_update) {
+  if (
+    !is_array($product->type)
+    && in_array($product->type, $commerce_ads_ws['ads_product_types'])
+    && $product->commerce_ads_product_needs_update == $product->original->commerce_ads_product_needs_update
+    // Do not call ADS API if the batch update is already running.
+    && !variable_get(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING, FALSE)
+  ) {
     if ($product->commerce_ads_product_needs_update == PRODUCT_SENT) {
       $product->commerce_ads_product_needs_update = PRODUCT_TO_BE_UPDATED;
     }

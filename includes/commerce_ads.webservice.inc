@@ -422,3 +422,85 @@ function commerce_ads_check_login_ws($url = '', $authorization_key = '') {
     return FALSE;
   }
 }
+
+/**
+ * Gets stock information for all products from the ADS Webservice.
+ *
+ * @param string $url
+ *   The url to request (with trailing slash).
+ * @param string $authorization_key
+ *   The authorization key to send in request header to test webservice login.
+ *
+ * @return
+ */
+function commerce_ads_get_stock_for_all_products($url = '', $authorization_key = '') {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+
+  if (empty($authorization_key)) {
+    if (!empty($commerce_ads_ws['ads_authorization_key'])) {
+      $authorization_key = $commerce_ads_ws['ads_authorization_key'];
+    }
+  }
+
+  $response = commerce_ads_request_ads(
+    'api/items/getStockImage',
+    array(
+      'method' => 'GET',
+      'timeout' => 6000,
+      'headers' => array(
+        'Authorization' => $authorization_key,
+      ),
+    ),
+    $url
+  );
+
+  if (
+    !is_object($response)
+    && isset($response['Code'])
+    && $response['Code'] === 0
+    && !empty($response['Data'])
+  ) {
+    // Key return array by ProductId.
+    $return = array();
+    foreach ($response['Data'] as $product_data) {
+      $return[$product_data['ProductId']] = $product_data;
+    }
+    return $return;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Cron task worker for updating stock of all products.
+ *
+ * @see commerce_ads_cron()
+ */
+function commerce_ads_update_stock_for_all_products() {
+  // Get stock for all products from ADS.
+  $stocks = commerce_ads_get_stock_for_all_products();
+
+  // Load products from ProductIds received in stock information.
+  $query = new EntityFieldQuery();
+  $result = $query->entityCondition('entity_type', 'commerce_product')
+    ->propertyCondition('product_id', array_keys($stocks), 'IN')
+    ->execute();
+
+  // Set variable to mark batch update running. This will disable
+  // parallel calls to ADS API while products are being updated.
+  variable_set(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING, TRUE);
+
+  // Update stock information for each product.
+  if (!empty($result['commerce_order'])) {
+    $products = entity_load(array_keys($result['commerce_order']));
+    if (!empty($products)) {
+      foreach ($products as $product) {
+        commerce_ads_update_product_stock($product, $stocks[$product->product_id]);
+      }
+    }
+  }
+
+  // Delete variable marking batch product update as running.
+  variable_del(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING);
+}

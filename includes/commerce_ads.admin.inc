@@ -151,14 +151,7 @@ function commerce_ads_product_configure_form($form, &$form_state) {
   $form['ads_product_synchronization']['ads_product_send_frequency'] = array(
     '#type' => 'select',
     '#title' => t('Synchronization frequency'),
-    '#options' => array(
-      '' => t('Select a value'),
-      '300' => t('5 minutes'),
-      '600' => t('10 minutes'),
-      '1800' => t('30 minutes'),
-      '3600' => t('1 hour'),
-      '7200' => t('2 hours'),
-    ),
+    '#options' => commerce_ads_frequency_options(),
     '#default_value' => !empty($commerce_ads_ws['ads_product_send_frequency']) ? $commerce_ads_ws['ads_product_send_frequency'] : '',
   );
   $form['ads_product_synchronization']['ads_send_product'] = array(
@@ -166,6 +159,34 @@ function commerce_ads_product_configure_form($form, &$form_state) {
     '#value' => t('Send all products.'),
     '#submit' => array('commerce_ads_send_all_products_batch_submit'),
   );
+
+  if (module_exists('commerce_stock')) {
+    $form['ads_product_stock_synchronization'] = array(
+      '#tree' => TRUE,
+      '#type' => 'fieldset',
+      '#title' => t('Stock synchronization'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+    );
+    $form['ads_product_stock_synchronization']['ads_product_stock_sync_frequency'] = array(
+      '#type' => 'select',
+      '#title' => t('Stock synchronization frequency'),
+      '#description' => t('Selecting a value will enable stock synchronization for all products on the cron run.'),
+      '#options' => commerce_ads_frequency_options(),
+      '#default_value' => !empty($commerce_ads_ws['ads_product_stock_sync_frequency']) ? $commerce_ads_ws['ads_product_stock_sync_frequency'] : '',
+    );
+    $form['ads_product_stock_synchronization']['ads_product_stock_sync_load'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Synchronize product stock from ADS on product load'),
+      '#description' => t("Enabling this option will synchronize single product's stock each time a product is loaded from the database."),
+      '#default_value' => !empty($commerce_ads_ws['ads_product_stock_sync_load']),
+    );
+    $form['ads_product_stock_synchronization']['ads_product_stock_sync_now'] = array(
+      '#type' => 'submit',
+      '#value' => t('Synchronize stock for all products now'),
+      '#submit' => array('commerce_ads_product_stock_sync_batch_submit'),
+    );
+  }
 
   $form['submit'] = array(
     '#type' => 'submit',
@@ -181,10 +202,15 @@ function commerce_ads_product_configure_form_submit($form, &$form_state) {
   if (!empty($form_state['values']['ads_product_mapping'])) {
     $commerce_ads_ws['ads_product_mapping'] = $form_state['values']['ads_product_mapping'];
   }
+
+  // Product sync settings.
   $commerce_ads_ws['ads_send_newly_created_product'] = $form_state['values']['ads_product_synchronization']['ads_send_newly_created_product'];
-  if (!empty($form_state['values']['ads_product_synchronization']['ads_product_send_frequency'])) {
-    $commerce_ads_ws['ads_product_send_frequency'] = $form_state['values']['ads_product_synchronization']['ads_product_send_frequency'];
-  }
+  $commerce_ads_ws['ads_product_send_frequency'] = $form_state['values']['ads_product_synchronization']['ads_product_send_frequency'];
+
+  // Product stock sync settings.
+  $commerce_ads_ws['ads_product_stock_sync_frequency'] = $form_state['values']['ads_product_stock_synchronization']['ads_product_stock_sync_frequency'];
+  $commerce_ads_ws['ads_product_stock_sync_load'] = $form_state['values']['ads_product_stock_synchronization']['ads_product_stock_sync_load'];
+
   variable_set('commerce_ads_ws', $commerce_ads_ws);
   drupal_set_message(t('Configuration saved'));
 }
@@ -210,6 +236,7 @@ function theme_commerce_ads_product_configure_form($variables) {
     $form['ads_product_mapping'] = array('#markup' => theme('table', array('header' => $header, 'rows' => $rows)));
   }
   $form['ads_product_synchronization'] = array('#markup' => drupal_render($variables['form']['ads_product_synchronization']));
+  $form['ads_product_stock_synchronization'] = array('#markup' => drupal_render($variables['form']['ads_product_stock_synchronization']));
   $form['submit'] = array('#markup' => drupal_render($variables['form']['submit']));
   return drupal_render($form) . drupal_render_children($variables['form']);
 }
@@ -334,14 +361,7 @@ function commerce_ads_order_configure_form($form, &$form_state) {
   $form['ads_order_synchronization']['ads_order_send_frequency'] = array(
     '#type' => 'select',
     '#title' => t('Send to ADS the newly created order (matching the above validation status)'),
-    '#options' => array(
-      '' => t('Select a value'),
-      '300' => t('5 minutes'),
-      '600' => t('10 minutes'),
-      '1800' => t('30 minutes'),
-      '3600' => t('1 hour'),
-      '7200' => t('2 hours'),
-    ),
+    '#options' => commerce_ads_frequency_options(),
     '#default_value' => !empty($commerce_ads_ws['ads_order_send_frequency']) ? $commerce_ads_ws['ads_order_send_frequency'] : '',
   );
   $form['ads_order_synchronization']['ads_send_order'] = array(
@@ -362,14 +382,7 @@ function commerce_ads_order_configure_form($form, &$form_state) {
     '#type' => 'select',
     '#title' => t('Order update frequency'),
     '#description' => t('Update frequency of an order shipping status once it has been sent to ADS'),
-    '#options' => array(
-      '' => t('Select a value'),
-      '300' => t('5 minutes'),
-      '600' => t('10 minutes'),
-      '1800' => t('30 minutes'),
-      '3600' => t('1 hour'),
-      '7200' => t('2 hours'),
-    ),
+    '#options' => commerce_ads_frequency_options(),
     '#default_value' => !empty($commerce_ads_ws['ads_order_update_frequency']) ? $commerce_ads_ws['ads_order_update_frequency'] : '',
   );
   $form['ads_order_update']['ads_update_order'] = array(
@@ -620,4 +633,61 @@ function commerce_ads_send_all_orders_batch_submit($form, &$form_state) {
       ),
     )
   );
+}
+
+/**
+ * Form submission callback: sets batch to synchronize all products stock.
+ *
+ * @see commerce_ads_product_configure_form()
+ * @see commerce_ads_batch_product_stock_sync_process()
+ * @see commerce_ads_batch_product_stock_sync_finished()
+ */
+function commerce_ads_product_stock_sync_batch_submit($form, &$form_state) {
+  // Get stock for all products from ADS.
+  $stocks = commerce_ads_get_stock_for_all_products();
+
+  // Set variable to mark batch update running. This will disable
+  // parallel calls to ADS API while products are being updated.
+  variable_set(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING, TRUE);
+
+  // Prepare batch.
+  $batch = array(
+    'title' => t('Synchronize stock for all products'),
+    'operations' => array(),
+    'finished' => 'commerce_ads_batch_product_stock_sync_finished',
+    'file' => drupal_get_path('module', 'commerce_ads') . '/includes/commerce_ads.batch.inc',
+  );
+
+  if (!empty($stocks)) {
+    foreach ($stocks as $stock) {
+      $batch['operations'][] = array('commerce_ads_batch_product_stock_sync_process', array($stock));
+    }
+  }
+
+  batch_set($batch);
+}
+
+/**
+ * Returns options array for cron frequency form select element.
+ *
+ * @return array
+ *   Options array for cron frequency form select element.
+ */
+function commerce_ads_frequency_options() {
+  $frequency_options = array(
+    '' => t('Select a value'),
+    '300' => t('5 minutes'),
+    '600' => t('10 minutes'),
+    '1800' => t('30 minutes'),
+    '3600' => t('1 hour'),
+    '7200' => t('2 hours'),
+    '21600' => t('6 hours'),
+    '43200' => t('12 hours'),
+    '86400' => t('1 day'),
+  );
+
+  // Allow other modules to alter frequency options.
+  drupal_alter('commerce_ads_frequency_options', $frequency_options);
+
+  return $frequency_options;
 }
