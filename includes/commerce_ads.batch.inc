@@ -44,3 +44,13 @@ function commerce_ads_batch_product_stock_sync_finished($success, $results, $ope
   // Delete variable marking batch product update as running.
   variable_del(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING);
 }
+
+/**
+ * Batch finish handler.
+ *
+ * @see commerce_ads_send_all_products_batch_submit()
+ */
+function commerce_ads_batch_send_all_products_finished($success, $results, $operations) {
+  // Delete variable marking batch product update as running.
+  variable_del(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING);
+}
