@@ -628,13 +628,17 @@ function commerce_ads_send_all_products_batch_submit($form, &$form_state) {
 }
 
 function commerce_ads_send_all_orders_batch_submit($form, &$form_state) {
-  // Reset counter for debug information.
-  $_SESSION['http_request_count'] = 0;
+  // Set variable to mark batch update running. This will disable
+  // parallel calls to ADS API while products are being updated.
+  variable_set(COMMERCE_ADS_WS_ORDER_UPDATE_RUNNING, TRUE);
+
   batch_set(
     array(
       'operations' => array(
         array('commerce_ads_send_all_orders', array())
       ),
+      'finished' => 'commerce_ads_batch_send_all_orders_finished',
+      'file' => drupal_get_path('module', 'commerce_ads') . '/includes/commerce_ads.batch.inc',
     )
   );
 }

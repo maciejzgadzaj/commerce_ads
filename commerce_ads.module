@@ -34,6 +34,11 @@ define('PRODUCT_SENT', -1);
  */
 define('COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING', 'commerce_ads_ws_product_update_running');
 
+/**
+ * Name of the variable used to mark the order update as running.
+ */
+define('COMMERCE_ADS_WS_ORDER_UPDATE_RUNNING', 'commerce_ads_ws_order_update_running');
+
 include_once 'includes/commerce_ads.webservice.inc';
 
 /**
