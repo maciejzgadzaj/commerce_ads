@@ -124,7 +124,7 @@ function commerce_ads_send_products($products = array()) {
       }
 
       $product_to_send = array(
-        'ProductId' => substr($product->product_id->value(), 0, 18),
+        'ProductId' => substr($product->sku->value(), 0, 18),
         'Type' => substr($product->type->value(), 0, 30),
         'Picture' => substr(commerce_ads_get_field_value('Picture', $product, $commerce_ads_ws['ads_product_mapping'], 'commerce_product'), 0, 250),
         'Size' => $size_array,
