@@ -551,9 +551,9 @@ function commerce_ads_shipping_configure_form($form, &$form_state) {
   );
   foreach (commerce_shipping_services() as $services) {
     $form['ads_shipping_services'][$services['name']] = array(
-      '#type' => 'textfield',
+      '#type' => 'select',
       '#title' => t($services['display_title']),
-      '#size' => 20,
+      '#options' => commerce_ads_shipping_deliverymanid(),
       '#default_value' => !empty($commerce_ads_ws['ads_shipping_services'][$services['name']]) ? $commerce_ads_ws['ads_shipping_services'][$services['name']] : '',
     );
   }
@@ -698,4 +698,22 @@ function commerce_ads_frequency_options() {
   drupal_alter('commerce_ads_frequency_options', $frequency_options);
 
   return $frequency_options;
+}
+
+function commerce_ads_shipping_deliverymanid() {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  $shippings = array('' => t('Select a matching ads delivery method'));
+  $response = commerce_ads_request_ads('api/customerOrders/getDeliverymanIDList', array(
+    'method' => 'GET',
+    'timeout' => 6000,
+    'headers' => array(
+      'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
+    ),
+  ));
+  if ($response['Code'] === 0) {
+    foreach ($response['Data'] as $deliverymanid) {
+      $shippings[$deliverymanid['DeliverymanID']] = $deliverymanid['Label'];
+    }
+  }
+  return $shippings;
 }
