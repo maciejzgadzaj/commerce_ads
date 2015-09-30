@@ -249,7 +249,7 @@ function commerce_ads_get_order_info($order_wrapper) {
       }
       elseif ($line_item->type->value() == "product" && in_array($line_item->commerce_product->type->value(), $commerce_ads_ws['ads_product_types'])) {
         $order_line_item_info['products'][] = array(
-          'ProductId' => $line_item->commerce_product->product_id->value(),
+          'ProductId' => $line_item->commerce_product->sku->value(),
           'Label' => $line_item->commerce_product->title->value(),
           'Quantity' => $line_item->quantity->value(),
         );
@@ -281,8 +281,8 @@ function commerce_ads_commerce_product_load($products) {
 
     // Update stock for all loaded products.
     foreach ($products as $product) {
-      if (!empty($stocks[$product->product_id])) {
-        commerce_ads_update_product_stock($product, $stocks[$product->product_id]);
+      if (!empty($stocks[$product->sku])) {
+        commerce_ads_update_product_stock($product, $stocks[$product->sku]);
       }
     }
 

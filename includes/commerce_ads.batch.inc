@@ -15,7 +15,7 @@ function commerce_ads_batch_product_stock_sync_process($stock_item, &$context) {
   }
 
   // Unable to load the product.
-  if (!$product = commerce_product_load($stock_item['ProductId'])) {
+  if (!$product = commerce_product_load_by_sku($stock_item['ProductId'])) {
     watchdog('commerce_ads', 'Stock update batch: Unable to load product from ProductID @product_id', array(
       '@product_id' => $stock_item['ProductId'],
     ), WATCHDOG_ERROR);
@@ -26,7 +26,7 @@ function commerce_ads_batch_product_stock_sync_process($stock_item, &$context) {
   if (empty($product->commerce_stock)) {
     watchdog('commerce_ads', 'Stock update batch: Field @field_name could not be found on product ID @product_id', array(
       '@field_name' => 'commerce_stock',
-      '@product_id' => $product->product_id,
+      '@product_id' => $product->sku,
     ), WATCHDOG_ERROR);
     return FALSE;
   }

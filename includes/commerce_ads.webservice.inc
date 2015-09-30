@@ -484,7 +484,7 @@ function commerce_ads_update_stock_for_all_products() {
   // Load products from ProductIds received in stock information.
   $query = new EntityFieldQuery();
   $result = $query->entityCondition('entity_type', 'commerce_product')
-    ->propertyCondition('product_id', array_keys($stocks), 'IN')
+    ->propertyCondition('sku', array_keys($stocks), 'IN')
     ->execute();
 
   // Set variable to mark batch update running. This will disable
@@ -496,7 +496,7 @@ function commerce_ads_update_stock_for_all_products() {
     $products = entity_load(array_keys($result['commerce_order']));
     if (!empty($products)) {
       foreach ($products as $product) {
-        commerce_ads_update_product_stock($product, $stocks[$product->product_id]);
+        commerce_ads_update_product_stock($product, $stocks[$product->sku]);
       }
     }
   }
