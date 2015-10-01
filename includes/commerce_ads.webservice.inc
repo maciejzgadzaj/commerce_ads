@@ -493,7 +493,7 @@ function commerce_ads_update_stock_for_all_products() {
 
   // Update stock information for each product.
   if (!empty($result['commerce_product'])) {
-    $products = entity_load(array_keys($result['commerce_product']));
+    $products = commerce_product_load_multiple(array_keys($result['commerce_product']));
     if (!empty($products)) {
       foreach ($products as $product) {
         commerce_ads_update_product_stock($product, $stocks[$product->sku]);
