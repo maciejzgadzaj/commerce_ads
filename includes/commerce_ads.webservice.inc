@@ -199,6 +199,9 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
     $order_update_json = array();
     foreach ($orders as $order) {
       $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+      if (in_array($order_wrapper->status->value(), $commerce_ads_ws['ads_order_update_end'])) {
+        continue;
+      }
       $result = db_select('commerce_order', 'c')
         ->fields('c', array('commerce_ads_order_needs_update'))
         ->condition('order_id', $order_wrapper->order_id->value())
@@ -308,6 +311,10 @@ function commerce_ads_update_order($orders = array()) {
   if (!empty($orders)) {
     foreach ($orders as $order_id) {
       $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+      $order_wrapper = entity_metadata_wrapper('commerce_order', $order_id);
+      if (in_array($order_wrapper->status->value(), $commerce_ads_ws['ads_order_update_end'])) {
+        continue;
+      }
       $response = commerce_ads_request_ads('api/CustomerOrders/get?Number=' . $order_id, array(
         'method' => 'GET',
         'timeout' => 6000,
@@ -317,7 +324,6 @@ function commerce_ads_update_order($orders = array()) {
       ));
       if ($response['Code'] === 0 && isset($commerce_ads_ws['ads_shipping_statuses'][$response['Data']['CustomerOrderState']['StateId']])) {
         $save = FALSE;
-        $order_wrapper = entity_metadata_wrapper('commerce_order', $order_id);
         if ($commerce_ads_ws['ads_shipping_statuses'][$response['Data']['CustomerOrderState']['StateId']] != $order_wrapper->status->value()) {
           $order_wrapper->status->set($commerce_ads_ws['ads_shipping_statuses'][$response['Data']['CustomerOrderState']['StateId']]);
           $save = TRUE;

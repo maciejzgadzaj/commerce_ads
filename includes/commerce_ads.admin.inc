@@ -385,6 +385,14 @@ function commerce_ads_order_configure_form($form, &$form_state) {
     '#options' => commerce_ads_frequency_options(),
     '#default_value' => !empty($commerce_ads_ws['ads_order_update_frequency']) ? $commerce_ads_ws['ads_order_update_frequency'] : '',
   );
+  $form['ads_order_update']['ads_order_update_end'] = array(
+    '#type' => 'select',
+    '#title' => t('Order blocking status'),
+    '#options' => $options,
+    '#description' => t('Select the order status for which orders will not be updated any more.'),
+    '#default_value' => !empty($commerce_ads_ws['ads_order_update_end']) ? $commerce_ads_ws['ads_order_update_end'] : array(),
+    '#multiple' => TRUE,
+  );
   $form['ads_order_update']['ads_update_order'] = array(
     '#type' => 'submit',
     '#value' => t('Update all orders.'),
@@ -415,6 +423,9 @@ function commerce_ads_order_configure_form_submit($form, &$form_state) {
   }
   if (!empty($form_state['values']['ads_order_update']['ads_order_update_frequency'])) {
     $commerce_ads_ws['ads_order_update_frequency'] = $form_state['values']['ads_order_update']['ads_order_update_frequency'];
+  }
+  if (!empty($form_state['values']['ads_order_update']['ads_order_update_end'])) {
+    $commerce_ads_ws['ads_order_update_end'] = $form_state['values']['ads_order_update']['ads_order_update_end'];
   }
   variable_set('commerce_ads_ws', $commerce_ads_ws);
   drupal_set_message(t('Configuration saved'));
