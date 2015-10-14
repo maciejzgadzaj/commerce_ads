@@ -369,32 +369,27 @@ function commerce_ads_entity_property_info_alter(&$info) {
  * Implements hook_commerce_order_update().
  */
 function commerce_ads_commerce_order_update($order) {
-  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  $result = db_select('commerce_order', 'c')
-    ->fields('c', array('commerce_ads_order_needs_update'))
-    ->condition('order_id', $order->order_id)
-    ->execute()
-    ->fetchAssoc();
-  if (isset($result['commerce_ads_order_needs_update'])) {
-    if ($result['commerce_ads_order_needs_update'] == ORDER_SENT) {
-      $result['old_commerce_ads_order_needs_update'] = $result['commerce_ads_order_needs_update'];
-      $result['commerce_ads_order_needs_update'] = ORDER_TO_BE_UPDATED;
+  if (isset($order->data['commerce_ads_send_all_orders'])) {
+    unset($order->data['commerce_ads_send_all_orders']);
+  }
+  else {
+    $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+    $order_needs_update = $order->commerce_ads_order_needs_update;
+    // If order was already sent, flag it as to be updated.
+    if ($order_needs_update == ORDER_SENT) {
+      $order->commerce_ads_order_needs_update = ORDER_TO_BE_UPDATED;
     }
-    if ($order->status != $order->original->status && !empty($commerce_ads_ws['ads_order_status']) && $order->status === $commerce_ads_ws['ads_order_status'] && $result['commerce_ads_order_needs_update'] != ORDER_SENT) {
-      $result['old_commerce_ads_order_needs_update'] = $result['commerce_ads_order_needs_update'];
-      $result['commerce_ads_order_needs_update'] = ORDER_TO_BE_CREATED;
+    // If the order reach the status for it to be sent, flag it as to be created.
+    if ($order->status != $order->original->status
+      && !empty($commerce_ads_ws['ads_order_status'])
+      && $order->status === $commerce_ads_ws['ads_order_status']
+      && $order_needs_update != ORDER_SENT) {
+      $order->commerce_ads_order_needs_update = ORDER_TO_BE_CREATED;
     }
-    if (isset($result['old_commerce_ads_order_needs_update'])) {
-      // Bypass infinite loop.
-      db_update('commerce_order')
-        ->fields(array(
-        'commerce_ads_order_needs_update' => $result['commerce_ads_order_needs_update'],
-      ))
-        ->condition('order_id', $order->order_id)
-        ->execute();
-    }
-    if (!empty($commerce_ads_ws['ads_send_newly_created_order']) && in_array($result['commerce_ads_order_needs_update'], array(ORDER_TO_BE_UPDATED, ORDER_TO_BE_CREATED))) {
-      commerce_ads_send_order(array($order->order_id));
+    // If ads is configured to send the order directly to ads then do it.
+    if (!empty($commerce_ads_ws['ads_send_newly_created_order']) && in_array($order->commerce_ads_order_needs_update, array(ORDER_TO_BE_UPDATED, ORDER_TO_BE_CREATED))) {
+      $order_sent = commerce_ads_send_order(array($order));
+      $order->commerce_ads_order_needs_update = $order_sent[$order->order_id];
     }
   }
 }

@@ -187,26 +187,26 @@ function commerce_ads_send_products($products = array()) {
  * Send order(s) to ads.
  *
  * @param array $orders
- *  Array of order_id to be sent to ADS.
+ *  Array of order object to be sent to ADS.
  * @param string $order_type
  *  The type of order on ADS side (SHOP, PROD, ABO).
+ *
+ * @return array
+ *  An array keyed by order id and valued by status (ORDER_SENT)
  */
 function commerce_ads_send_order($orders = array(), $order_type = NULL) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   if (!empty($orders) && !empty($commerce_ads_ws['ads_order_mapping']) && commerce_ads_check_login_ws()) {
     global $language;
+    $return = array();
     $order_create_json = array();
     $order_update_json = array();
     foreach ($orders as $order) {
       $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-      if (in_array($order_wrapper->status->value(), $commerce_ads_ws['ads_order_update_end'])) {
+      if (isset($commerce_ads_ws['ads_order_update_end'])
+      && in_array($order_wrapper->status->value(), $commerce_ads_ws['ads_order_update_end'])) {
         continue;
       }
-      $result = db_select('commerce_order', 'c')
-        ->fields('c', array('commerce_ads_order_needs_update'))
-        ->condition('order_id', $order_wrapper->order_id->value())
-        ->execute()
-        ->fetchAssoc();
 
       if (commerce_ads_order_needs_to_be_sent($order_wrapper, $commerce_ads_ws['ads_product_types'])) {
         $order_info = commerce_ads_get_order_info($order_wrapper);
@@ -256,19 +256,13 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
           ),
         );
         drupal_alter('commerce_ads_order', $order_to_send);
-        if ($result['commerce_ads_order_needs_update']== ORDER_TO_BE_UPDATED) {
+        if ($order->commerce_ads_order_needs_update == ORDER_TO_BE_UPDATED) {
           $order_update_json[] = $order_to_send;
         }
-        elseif ($result['commerce_ads_order_needs_update'] == ORDER_TO_BE_CREATED) {
+        elseif ($order->commerce_ads_order_needs_update == ORDER_TO_BE_CREATED) {
           $order_create_json[] = $order_to_send;
         }
-        // Bypass infinite loop in hook_commerce_order_update().
-        db_update('commerce_order')
-          ->fields(array(
-          'commerce_ads_order_needs_update' => ORDER_SENT,
-        ))
-          ->condition('order_id', $order_wrapper->order_id->value())
-          ->execute();
+        $return[$order->order_id] = ORDER_SENT;
       }
     }
 
@@ -298,6 +292,7 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
       );
       commerce_ads_request_ads('api/customerOrders/createMultiple', $options);
     }
+    return $return;
   }
 }
 
@@ -312,7 +307,9 @@ function commerce_ads_update_order($orders = array()) {
     foreach ($orders as $order_id) {
       $commerce_ads_ws = variable_get('commerce_ads_ws', array());
       $order_wrapper = entity_metadata_wrapper('commerce_order', $order_id);
-      if (in_array($order_wrapper->status->value(), $commerce_ads_ws['ads_order_update_end'])) {
+      // Don't update order if it has reached a certain status.
+      if (isset($commerce_ads_ws['ads_order_update_end'])
+        && in_array($order_wrapper->status->value(), $commerce_ads_ws['ads_order_update_end'])) {
         continue;
       }
       $response = commerce_ads_request_ads('api/CustomerOrders/get?Number=' . $order_id, array(
@@ -359,12 +356,23 @@ function commerce_ads_update_all_orders() {
 function commerce_ads_send_all_orders() {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   if (!empty($commerce_ads_ws['ads_order_mapping'])) {
+    // Get all orders that needs to be created / updated on ads.
     $query = new EntityFieldQuery();
     $query->entityCondition('entity_type', 'commerce_order')
       ->propertyCondition('commerce_ads_order_needs_update', array(ORDER_TO_BE_CREATED, ORDER_TO_BE_UPDATED), 'IN');
     $result = $query->execute();
     if (isset($result['commerce_order'])) {
-      commerce_ads_send_order(array_keys($result['commerce_order']));
+      $orders = commerce_order_load_multiple(array_keys($result['commerce_order']));
+      // Send the order.
+      $orders_sent = commerce_ads_send_order($orders);
+      foreach ($orders_sent as $order_id => $value) {
+        $order = $orders[$order_id];
+        // Flag the order as sent.
+        $order->commerce_ads_order_needs_update = $value;
+        // Set a flag to bypass hook_commerce_order_update.
+        $order->data['commerce_ads_send_all_orders'] = TRUE;
+        commerce_order_save($order);
+      }
     }
   }
   else {
