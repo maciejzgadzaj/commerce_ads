@@ -306,13 +306,16 @@ function commerce_ads_update_product_stock($product, $stock_item) {
 }
 
 /**
- * Implements hook_commerce_product_insert().
+ * Implements hook_entity_presave().
  */
-function commerce_ads_commerce_product_insert($product) {
-  // Send product when being created (if checked in ads config)
-  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  if (in_array($product->type, $commerce_ads_ws['ads_product_types']) && !empty($commerce_ads_ws['ads_send_newly_created_product'])) {
-    commerce_ads_send_products(array($product->product_id));
+function commerce_ads_entity_presave($entity, $type) {
+  if ($type === 'commerce_product' && $entity->is_new) {
+    // Send product when being created (if checked in ads config)
+    $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+    if (in_array($entity->type, $commerce_ads_ws['ads_product_types']) && !empty($commerce_ads_ws['ads_send_newly_created_product'])) {
+      commerce_ads_send_products(array($entity));
+      $entity->commerce_ads_product_needs_update = PRODUCT_SENT;
+    }
   }
 }
 
@@ -320,27 +323,26 @@ function commerce_ads_commerce_product_insert($product) {
  * Implements hook_commerce_product_update().
  */
 function commerce_ads_commerce_product_update($product) {
-  // Update product when being updated (if checked in ads config)
-  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  if (
-    !is_array($product->type)
-    && in_array($product->type, $commerce_ads_ws['ads_product_types'])
-    && $product->commerce_ads_product_needs_update == $product->original->commerce_ads_product_needs_update
-    // Do not call ADS API if the batch update is already running.
-    && !variable_get(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING, FALSE)
-  ) {
-    if ($product->commerce_ads_product_needs_update == PRODUCT_SENT) {
-      $product->commerce_ads_product_needs_update = PRODUCT_TO_BE_UPDATED;
-    }
-    if (!empty($product->product_id) && !empty($commerce_ads_ws['ads_send_newly_created_product']) && in_array($product->commerce_ads_product_needs_update, array(PRODUCT_TO_BE_UPDATED, PRODUCT_TO_BE_CREATED))) {
-      // Bypass infinite loop.
-      db_update('commerce_product')
-        ->fields(array(
-        'commerce_ads_product_needs_update' => $product->commerce_ads_product_needs_update,
-        ))
-        ->condition('product_id', $product->product_id)
-        ->execute();
-      commerce_ads_send_products(array($product->product_id));
+  if (isset($product->data['commerce_ads_send_all_products'])) {
+    unset($product->data['commerce_ads_send_all_products']);
+  }
+  else {
+    // Update product when being updated (if checked in ads config)
+    $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+    if (
+      !is_array($product->type)
+      && in_array($product->type, $commerce_ads_ws['ads_product_types'])
+      && $product->commerce_ads_product_needs_update == $product->original->commerce_ads_product_needs_update
+      // Do not call ADS API if the batch update is already running.
+      && !variable_get(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING, FALSE)
+    ) {
+      if ($product->commerce_ads_product_needs_update == PRODUCT_SENT) {
+        $product->commerce_ads_product_needs_update = PRODUCT_TO_BE_UPDATED;
+      }
+      if (!empty($product->product_id) && !empty($commerce_ads_ws['ads_send_newly_created_product']) && in_array($product->commerce_ads_product_needs_update, array(PRODUCT_TO_BE_UPDATED, PRODUCT_TO_BE_CREATED))) {
+        $product_sent = commerce_ads_send_products(array($product));
+        $product->commerce_ads_product_needs_update = $product_sent[$product->product_id];
+      }
     }
   }
 }

@@ -86,11 +86,12 @@ function commerce_ads_get_ads_base_url() {
  * Send product(s) to ads.
  *
  * @param array $products
- *  Array of product_id to be sent to ADS.
+ *  Array of product objects to be sent to ADS.
  */
 function commerce_ads_send_products($products = array()) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   if (!empty($products) && !empty($commerce_ads_ws['ads_product_mapping']) && commerce_ads_check_login_ws()) {
+    $return = array();
     $product_update_json = array();
     $product_create_json = array();
     foreach ($products as $product) {
@@ -144,14 +145,7 @@ function commerce_ads_send_products($products = array()) {
       elseif ($product->commerce_ads_product_needs_update->value() == PRODUCT_TO_BE_CREATED) {
         $product_create_json[] = $product_to_send;
       }
-
-      // Bypass infinite loop.
-      db_update('commerce_product')
-        ->fields(array(
-        'commerce_ads_product_needs_update' => PRODUCT_SENT,
-      ))
-        ->condition('product_id', $product->product_id->value())
-        ->execute();
+      $return[$product->getIdentifier()] = PRODUCT_SENT;
     }
 
     if (!empty($product_update_json)) {
@@ -180,6 +174,7 @@ function commerce_ads_send_products($products = array()) {
       );
       commerce_ads_request_ads('api/items/createMultiple', $options);
     }
+    return $return;
   }
 }
 
@@ -392,7 +387,17 @@ function commerce_ads_send_all_products() {
       ->entityCondition('type', array_keys($commerce_ads_ws['ads_product_types']));
     $result = $query->execute();
     if (isset($result['commerce_product'])) {
-      commerce_ads_send_products(array_keys($result['commerce_product']));
+      $products = commerce_product_load_multiple(array_keys($result['commerce_product']));
+      // Send products to ads.
+      $products_sent = commerce_ads_send_products($products);
+      foreach ($products_sent as $product_id => $value) {
+        $product = $products[$product_id];
+        // Flag the order as sent.
+        $product->commerce_ads_product_needs_update = $value;
+        // Set a flag to bypass hook_commerce_order_update.
+        $product->data['commerce_ads_send_all_products'] = TRUE;
+        commerce_product_save($product);
+      }
     }
   }
   else {
