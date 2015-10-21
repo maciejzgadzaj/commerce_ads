@@ -336,9 +336,16 @@ function commerce_ads_update_order($orders = array()) {
  * Update all ads orders that needs to be updated.
  */
 function commerce_ads_update_all_orders() {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', 'commerce_order')
     ->propertyCondition('commerce_ads_order_needs_update', array(ORDER_TO_BE_UPDATED, ORDER_SENT), 'IN');
+  // Don't update orders that don't need it.
+  if (isset($commerce_ads_ws['ads_order_update_end'])) {
+    $query->propertyCondition('status', $commerce_ads_ws['ads_order_update_end'], 'NOT IN');
+  }
+
   $result = $query->execute();
   if (isset($result['commerce_order'])) {
     commerce_ads_update_order(array_keys($result['commerce_order']));
