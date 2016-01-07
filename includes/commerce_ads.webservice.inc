@@ -10,13 +10,26 @@
  *
  * @return array
  */
-function commerce_ads_request_ads($service, $options = array(), $url = '') {
-  if (empty($url)) {
-    $url = commerce_ads_get_ads_base_url() . $service;
+function commerce_ads_request_ads($service, $options = array()) {
+  // Get the default API call options.
+  $default_options = commerce_ads_get_default_request_options();
+  // Allow to override the default options with call-specific options.
+  $options = array_replace_recursive($default_options, $options);
+
+  // In one specific situation we will get 'mode' from the options, instead of
+  // the variable (as it works by default) - this is when generic ADS module
+  // configuration is being saved in the BO - the variable might not be set yet
+  // (or the settings might just have changes), and we need to test the
+  // connectivity based on the new settings, which temporarily are stored only
+  // in the $form_state (see commerce_ads_configure_form_validate()).
+  if (!empty($options['mode'])) {
+    $base_url = commerce_ads_get_ads_base_url($options['mode']);
+    unset($options['mode']);
   }
   else {
-    $url .= $service;
+    $base_url = commerce_ads_get_ads_base_url();
   }
+  $url = $base_url . $service;
 
   // 'Authorization' header should start with 'Basic ' string.
   if (
@@ -73,14 +86,43 @@ function commerce_ads_request_ads_log($response) {
 /**
  * Get base url for making calls with ADS WS.
  *
+ * @param string $mode
+ *   A mode to return the base url for.
+ *
  * @return string
  *  Return the base url.
  */
-function commerce_ads_get_ads_base_url() {
-  $commerce_ads_ws = variable_get('commerce_ads_ws');
-  return !empty($commerce_ads_ws['ads_base_url']) ? $commerce_ads_ws['ads_base_url'] : '';
+function commerce_ads_get_ads_base_url($mode = '') {
+  if (empty($mode)) {
+    $commerce_ads_ws = variable_get('commerce_ads_ws');
+    if (!empty($commerce_ads_ws['ads_ws_mode'])) {
+      $mode = $commerce_ads_ws['ads_ws_mode'];
+    }
+  }
+  if (!empty($mode) && $mode == COMMERCE_ADS_WS_MODE_LIVE) {
+    return COMMERCE_ADS_WS_URL_LIVE;
+  }
+  else {
+    return COMMERCE_ADS_WS_URL_TEST;
+  }
 }
 
+/**
+ * Returns default option array for ADS API call.
+ *
+ * @return array
+ *   An array of default options for ADS API call.
+ */
+function commerce_ads_get_default_request_options() {
+  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+  return array(
+    'method' => 'GET',
+    'timeout' => 6000,
+    'headers' => array(
+      'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
+    ),
+  );
+}
 
 /**
  * Send product(s) to ads.
@@ -151,12 +193,10 @@ function commerce_ads_send_products($products = array()) {
     if (!empty($product_update_json)) {
       $options = array(
         'method' => 'POST',
-        'timeout' => 6000,
         'data' => drupal_json_encode($product_update_json),
         'headers' => array(
           'Content-Type' => 'application/json',
           'Accept' => 'application/json',
-          'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
         ),
       );
       commerce_ads_request_ads('api/items/updateMultiple', $options);
@@ -164,12 +204,10 @@ function commerce_ads_send_products($products = array()) {
     if (!empty($product_create_json)) {
       $options = array(
         'method' => 'POST',
-        'timeout' => 6000,
         'data' => drupal_json_encode($product_create_json),
         'headers' => array(
           'Content-Type' => 'application/json',
           'Accept' => 'application/json',
-          'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
         ),
       );
       commerce_ads_request_ads('api/items/createMultiple', $options);
@@ -264,12 +302,10 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
     if (!empty($order_update_json)) {
       $options = array(
         'method' => 'POST',
-        'timeout' => 6000,
         'data' => drupal_json_encode($order_update_json),
         'headers' => array(
           'Content-Type' => 'application/json',
           'Accept' => 'application/json',
-          'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
         ),
       );
       commerce_ads_request_ads('api/customerOrders/updateMultiple', $options);
@@ -277,12 +313,10 @@ function commerce_ads_send_order($orders = array(), $order_type = NULL) {
     if (!empty($order_create_json)) {
       $options = array(
         'method' => 'POST',
-        'timeout' => 6000,
         'data' => drupal_json_encode($order_create_json),
         'headers' => array(
           'Content-Type' => 'application/json',
           'Accept' => 'application/json',
-          'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
         ),
       );
       commerce_ads_request_ads('api/customerOrders/createMultiple', $options);
@@ -307,13 +341,7 @@ function commerce_ads_update_order($orders = array()) {
         && in_array($order_wrapper->status->value(), $commerce_ads_ws['ads_order_update_end'])) {
         continue;
       }
-      $response = commerce_ads_request_ads('api/CustomerOrders/get?Number=' . $order_id, array(
-        'method' => 'GET',
-        'timeout' => 6000,
-        'headers' => array(
-          'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
-        ),
-      ));
+      $response = commerce_ads_request_ads('api/CustomerOrders/get?Number=' . $order_id);
       if ($response['Code'] === 0 && isset($commerce_ads_ws['ads_shipping_statuses'][$response['Data']['CustomerOrderState']['StateId']])) {
         $save = FALSE;
         if ($commerce_ads_ws['ads_shipping_statuses'][$response['Data']['CustomerOrderState']['StateId']] != $order_wrapper->status->value()) {
@@ -423,24 +451,25 @@ function commerce_ads_send_all_products() {
  * @return bool
  *  Whether or not the webservice is reachable with those info.
  */
-function commerce_ads_check_login_ws($url = '', $authorization_key = '') {
+function commerce_ads_check_login_ws($mode = '', $authorization_key = '') {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   if (empty($authorization_key)) {
     if (!empty($commerce_ads_ws['ads_authorization_key'])) {
       $authorization_key = $commerce_ads_ws['ads_authorization_key'];
     }
   }
-  $response = commerce_ads_request_ads(
-    'api/Check/Login',
-    array(
-      'method' => 'POST',
-      'timeout' => 6000,
-      'headers' => array(
-        'Authorization' => $authorization_key,
-      ),
-    ),
-    $url
+
+  $options = array(
+    'method' => 'POST',
   );
+  if (!empty($authorization_key)) {
+    $options['headers']['Authorization'] = $authorization_key;
+  }
+  if (!empty($mode)) {
+    $options['mode'] = $mode;
+  }
+
+  $response = commerce_ads_request_ads('api/Check/Login', $options);
   if (!is_object($response) && isset($response['Code']) && $response['Code'] === 0) {
     return TRUE;
   }
@@ -459,26 +488,8 @@ function commerce_ads_check_login_ws($url = '', $authorization_key = '') {
  *
  * @return
  */
-function commerce_ads_get_stock_for_all_products($url = '', $authorization_key = '') {
-  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-
-  if (empty($authorization_key)) {
-    if (!empty($commerce_ads_ws['ads_authorization_key'])) {
-      $authorization_key = $commerce_ads_ws['ads_authorization_key'];
-    }
-  }
-
-  $response = commerce_ads_request_ads(
-    'api/items/getStockImage',
-    array(
-      'method' => 'GET',
-      'timeout' => 6000,
-      'headers' => array(
-        'Authorization' => $authorization_key,
-      ),
-    ),
-    $url
-  );
+function commerce_ads_get_stock_for_all_products() {
+  $response = commerce_ads_request_ads('api/items/getStockImage');
 
   if (
     !is_object($response)

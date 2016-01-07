@@ -18,14 +18,6 @@ function commerce_ads_configure_form($form, &$form_state) {
     '#default_value' => isset($commerce_ads_ws['ads_shopid']) ? $commerce_ads_ws['ads_shopid'] : '',
     '#required' => TRUE,
   );
-  // Base url.
-  $form['commerce_ads_ws']['ads_base_url'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Base url'),
-    '#description' => t('The base url to make call to the ADS Webservice. With trailing slash'),
-    '#default_value' => isset($commerce_ads_ws['ads_base_url']) ? $commerce_ads_ws['ads_base_url'] : '',
-    '#required' => TRUE,
-  );
   // Authorization key.
   $form['commerce_ads_ws']['ads_authorization_key'] = array(
     '#type' => 'textfield',
@@ -39,10 +31,10 @@ function commerce_ads_configure_form($form, &$form_state) {
     '#type' => 'radios',
     '#title' => t('Mode'),
     '#options' => array(
-      'test' => ('Test - allow you to test in real conditions.'),
-      'live' => ('Live - process real export import to a live account'),
+      COMMERCE_ADS_WS_MODE_TEST => ('Test - allow you to test in real conditions.'),
+      COMMERCE_ADS_WS_MODE_LIVE => ('Live - process real export import to a live account'),
     ),
-   '#default_value' => isset($commerce_ads_ws['ads_ws_mode']) ? $commerce_ads_ws['ads_ws_mode'] : 'test',
+   '#default_value' => isset($commerce_ads_ws['ads_ws_mode']) ? $commerce_ads_ws['ads_ws_mode'] : COMMERCE_ADS_WS_MODE_TEST,
   );
   $form['help'] = array(
     '#type' => 'markup',
@@ -57,7 +49,11 @@ function commerce_ads_configure_form($form, &$form_state) {
 }
 
 function commerce_ads_configure_form_validate(&$form, &$form_state) {
-  if (isset($form_state['values']['commerce_ads_ws']['ads_authorization_key']) && isset($form_state['values']['commerce_ads_ws']['ads_base_url']) && !commerce_ads_check_login_ws($form_state['values']['commerce_ads_ws']['ads_base_url'], $form_state['values']['commerce_ads_ws']['ads_authorization_key'])) {
+  if (
+    isset($form_state['values']['commerce_ads_ws']['ads_authorization_key'])
+    && isset($form_state['values']['commerce_ads_ws']['ads_ws_mode'])
+    && !commerce_ads_check_login_ws($form_state['values']['commerce_ads_ws']['ads_ws_mode'], $form_state['values']['commerce_ads_ws']['ads_authorization_key'])
+  ) {
     form_set_error('commerce_ads', t('The ADS webservice is not reachable with these credential. Please retry or call your ADS contact.'));
   }
 }
@@ -66,9 +62,6 @@ function commerce_ads_configure_form_submit($form, &$form_state) {
   $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   if (isset($form_state['values']['commerce_ads_ws']['ads_shopid'])) {
     $commerce_ads_ws['ads_shopid'] = $form_state['values']['commerce_ads_ws']['ads_shopid'];
-  }
-  if (isset($form_state['values']['commerce_ads_ws']['ads_base_url'])) {
-    $commerce_ads_ws['ads_base_url'] = $form_state['values']['commerce_ads_ws']['ads_base_url'];
   }
   if (isset($form_state['values']['commerce_ads_ws']['ads_authorization_key'])) {
     $commerce_ads_ws['ads_authorization_key'] = $form_state['values']['commerce_ads_ws']['ads_authorization_key'];
@@ -536,7 +529,7 @@ function commerce_ads_shipping_configure_form($form, &$form_state) {
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
-  if (!empty($commerce_ads_ws['ads_base_url']) && !empty($commerce_ads_ws['ads_authorization_key'])) {
+  if (!empty($commerce_ads_ws['ads_ws_mode']) && !empty($commerce_ads_ws['ads_authorization_key'])) {
     foreach (commerce_ads_shipping_statuses() as $ads_status) {
       $form['ads_shipping_statuses'][$ads_status['StateId']] = array(
         '#type' => 'select',
@@ -606,14 +599,7 @@ function commerce_ads_get_all_user_fields() {
 }
 
 function commerce_ads_shipping_statuses() {
-  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
-  $response = commerce_ads_request_ads('api/customerOrders/getStatusList', array(
-    'method' => 'GET',
-    'timeout' => 6000,
-    'headers' => array(
-      'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
-    ),
-  ));
+  $response = commerce_ads_request_ads('api/customerOrders/getStatusList');
   if ($response['Code'] === 0) {
     return $response['Data'];
   }
@@ -712,15 +698,8 @@ function commerce_ads_frequency_options() {
 }
 
 function commerce_ads_shipping_deliverymanid() {
-  $commerce_ads_ws = variable_get('commerce_ads_ws', array());
   $shippings = array('' => t('Select a matching ads delivery method'));
-  $response = commerce_ads_request_ads('api/customerOrders/getDeliverymanIDList', array(
-    'method' => 'GET',
-    'timeout' => 6000,
-    'headers' => array(
-      'Authorization' => !empty($commerce_ads_ws['ads_authorization_key']) ? $commerce_ads_ws['ads_authorization_key'] : '',
-    ),
-  ));
+  $response = commerce_ads_request_ads('api/customerOrders/getDeliverymanIDList');
   if ($response['Code'] === 0) {
     foreach ($response['Data'] as $deliverymanid) {
       $shippings[$deliverymanid['DeliverymanID']] = $deliverymanid['Label'];

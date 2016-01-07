@@ -39,6 +39,20 @@ define('COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING', 'commerce_ads_ws_product_update
  */
 define('COMMERCE_ADS_WS_ORDER_UPDATE_RUNNING', 'commerce_ads_ws_order_update_running');
 
+/**
+ * ADS webservice base URLs for live and test environments.
+ */
+define('COMMERCE_ADS_WS_URL_LIVE', 'http://ws.alpha-direct-services.com:8018/');
+define('COMMERCE_ADS_WS_URL_TEST', 'http://ws.alpha-direct-services.com:8023/');
+
+/**
+ * ADS prod and test internal environment names.
+ */
+define('COMMERCE_ADS_WS_MODE_LIVE', 'live');
+define('COMMERCE_ADS_WS_MODE_TEST', 'test');
+
+
+
 include_once 'includes/commerce_ads.webservice.inc';
 
 /**
