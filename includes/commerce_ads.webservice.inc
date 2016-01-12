@@ -541,3 +541,32 @@ function commerce_ads_update_stock_for_all_products() {
   // Delete variable marking batch product update as running.
   variable_del(COMMERCE_ADS_WS_PRODUCT_UPDATE_RUNNING);
 }
+
+/**
+ * Fetches order delivery information from ADS.
+ *
+ * @param int $order_id
+ *   The order ID for which to fetch the delivery information.
+ *
+ * @return array|bool
+ *   An array containing the order delivery information, or FALSE if there was
+ *   an error fetching the delivery information from ADS.
+ */
+function commerce_ads_get_order_delivery_info($order_id) {
+  $response = commerce_ads_request_ads('api/CustomerOrders/getDeliveryInformations?Number=' . $order_id);
+
+  if (
+    isset($response['Code'])
+    && $response['Code'] === 0
+    && !empty($response['Data'])
+  ) {
+    return $response['Data'];
+  }
+  else {
+    watchdog('commerce_ads', 'There was an error fetching delivery information for order @order_id from ADS. Full ADS response: !response', array(
+      '@order_id' => $order_id,
+      '!response' => '<pre>' . var_export($response, TRUE) . '</pre>',
+    ), WATCHDOG_ERROR);
+    return FALSE;
+  }
+}
