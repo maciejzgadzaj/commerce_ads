@@ -43,44 +43,24 @@ function commerce_ads_request_ads($service, $options = array()) {
 
   if (!empty($response->data)) {
     $response = json_decode($response->data, TRUE);
-    commerce_ads_request_ads_log($response);
-  }
-  elseif(!empty($response->error)) {
-    watchdog('commerce_ads', $response->error . ' => ' . $service);
-  }
-  return $response;
-}
 
-/**
- * Log the ads request response
- *
- * @param array $response
- *  A array containing the response of the webservice.
- */
-function commerce_ads_request_ads_log($response) {
-  $log = '';
-  if (!empty($response['Comment'])) {
-    $log .= $response['Comment'] . "\n";
-  }
-  if (!empty($response['Data']['Number']) && !empty($response['Data']['Shippings'])) {
-    $log .= 'Order n°' . $response['Data']['Number'] . ' updated.';
-  }
-  if (!empty($response['Data']) && is_array($response['Data'])) {
-    foreach ($response['Data'] as $value) {
-      if (is_array($value) && (isset($value['Data']) || isset($value['Comment']))) {
-        $log .= !empty($value['Data']) ? $value['Data'] . ': ' . $value['Comment'] . '. ' : $value['Comment'] . '. ';
-      }
+    // Log the API response if required.
+    $commerce_ads_ws = variable_get('commerce_ads_ws', array());
+    if (!empty($commerce_ads_ws['ads_debug']['log_api_responses'])) {
+      watchdog('commerce_ads', '@service response: !response', array(
+        '@service' => str_replace('api/', '', $service),
+        '!response' => '<pre>' . var_export($response, TRUE) . '</pre>',
+      ), WATCHDOG_DEBUG);
     }
   }
-  elseif (!empty($response['Message'])) {
-    $log .= $response['Message'];
+  elseif (!empty($response->error)) {
+    watchdog('commerce_ads', '@service error: @error_message. Full response: !response', array(
+      '@service' => str_replace('api/', '', $service),
+      '@error_message' => $response->error,
+      '!response' => '<pre>' . var_export($response, TRUE) . '</pre>',
+    ), array(), WATCHDOG_ERROR);
   }
-  else {
-    $log .= 'Response empty';
-  }
-  foreach (str_split($log, 5000) as $message) {
-    watchdog('commerce_ads', $message);
-  }
+  return $response;
 }
 
 /**

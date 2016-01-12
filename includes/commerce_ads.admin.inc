@@ -36,6 +36,14 @@ function commerce_ads_configure_form($form, &$form_state) {
     ),
    '#default_value' => isset($commerce_ads_ws['ads_ws_mode']) ? $commerce_ads_ws['ads_ws_mode'] : COMMERCE_ADS_WS_MODE_TEST,
   );
+  $form['commerce_ads_ws']['ads_debug'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Debug'),
+    '#options' => array(
+      'log_api_responses' => t('Log full ADS API responses.'),
+    ),
+    '#default_value' => isset($commerce_ads_ws['ads_debug']) ? $commerce_ads_ws['ads_debug'] : array(),
+  );
   $form['help'] = array(
     '#type' => 'markup',
     '#value' => t("If you don't have an ADS account, then please refer to ..."),
@@ -68,6 +76,9 @@ function commerce_ads_configure_form_submit($form, &$form_state) {
   }
   if (isset($form_state['values']['commerce_ads_ws']['ads_ws_mode'])) {
     $commerce_ads_ws['ads_ws_mode'] = $form_state['values']['commerce_ads_ws']['ads_ws_mode'];
+  }
+  if (isset($form_state['values']['commerce_ads_ws']['ads_debug'])) {
+    $commerce_ads_ws['ads_debug'] = $form_state['values']['commerce_ads_ws']['ads_debug'];
   }
   variable_set('commerce_ads_ws', $commerce_ads_ws);
   drupal_set_message(t('Configuration saved'));
